@@ -8,7 +8,7 @@ Other stuff seems really intent on making serialization or transport decisions f
 Based loosely on [JSON-RPC](http://www.jsonrpc.org/specification).
 
 ## Example
-See the [tests](#test).
+See the [tests](https://github.com/jessetane/rpc/blob/master/test.js).
 
 ## Test
 ``` bash
