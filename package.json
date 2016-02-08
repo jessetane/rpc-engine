@@ -1,0 +1,13 @@
+{
+  "name": "rpc",
+  "version": "1.0.0",
+  "description": "Minimalist RPC library.",
+  "scripts": {
+    "test": "node test"
+  },
+  "devDependencies": {
+    "tape": "^4.4.0"
+  },
+  "author": "jesse.tane@gmail.com",
+  "license": "Public Domain"
+}
