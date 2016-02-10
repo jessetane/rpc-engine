@@ -15,8 +15,6 @@ RPC.prototype.call = function (name) {
     message.id = String(this._callback++)
     this._callbacks[message.id] = cb
     params.pop()
-  } else {
-    cb = null
   }
   if (params.length) {
     message.params = params
