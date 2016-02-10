@@ -7,44 +7,41 @@ function RPC () {
   this._callback = 0
 }
 
-RPC.prototype.call = function (name, params, cb) {
+RPC.prototype.call = function (name) {
   var message = { method: name }
-  if (typeof params === 'function') {
-    cb = params
-    params = undefined
-  } else if (params) {
-    message.params = params
-  }
-  if (cb) {
+  var params = Array.prototype.slice.call(arguments, 1)
+  var cb = params.slice(-1)[0]
+  if (typeof cb === 'function') {
     message.id = String(this._callback++)
     this._callbacks[message.id] = cb
+    params.pop()
+  } else {
+    cb = null
+  }
+  if (params.length) {
+    message.params = params
   }
   this.send(this.serialize ? this.serialize(message) : message)
 }
 
 RPC.prototype.onmessage = function (message) {
   message = this.deserialize ? this.deserialize(message) : message
-  var id = message.id
-  var error = message.error
   var method = message.method
-  var params = message.params
-  var result = message.result
   if (method) {
-    method = this.methods[method]
+    this._handleRequest(method, message)
+  } else {
+    this._handleResponse(message)
+  }
+}
+
+RPC.prototype._handleRequest = function (name, message) {
+  var id = message.id
+  var params = message.params
+  var method = this.methods[name]
+  if (method) {
     if (id) {
-      if (!method) {
-        message = {
-          id: id,
-          error: {
-            code: -32601,
-            message: 'Method not found'
-          }
-        }
-        this.send(this.serialize ? this.serialize(message) : message)
-        return
-      }
       var self = this
-      method.apply(null, formatParams(params).concat(function (err, result) {
+      method.apply(null, (params || []).concat(function (err) {
         if (err) {
           err = {
             message: err.message,
@@ -55,29 +52,37 @@ RPC.prototype.onmessage = function (message) {
         message = {
           id: id,
           error: err,
-          result: result
+          results: Array.prototype.slice.call(arguments, 1)
         }
         self.send(self.serialize ? self.serialize(message) : message)
       }))
-    } else if (method) {
-      method.apply(null, formatParams(params))
+    } else {
+      method.apply(null, params)
     }
-  } else {
-    var cb = this._callbacks[id]
-    delete this._callbacks[id]
-    if (cb) {
-      if (error) {
-        var err = new Error(error.message)
-        err.code = error.code
-        err.data = error.data
+  } else if (id) {
+    message = {
+      id: id,
+      error: {
+        code: -32601,
+        message: 'Method not found'
       }
-      cb(err, result)
     }
+    this.send(this.serialize ? this.serialize(message) : message)
   }
 }
 
-function formatParams (_params) {
-  if (!_params) return []
-  if (Array.isArray(_params)) return _params
-  return [ _params ]
+RPC.prototype._handleResponse = function (message) {
+  var id = message.id
+  var error = message.error
+  var cb = this._callbacks[id]
+  delete this._callbacks[id]
+  if (cb) {
+    var err = null
+    if (error) {
+      err = new Error(error.message)
+      err.code = error.code
+      err.data = error.data
+    }
+    cb.apply(null, [err].concat(message.results))
+  }
 }

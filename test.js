@@ -28,7 +28,7 @@ tape('a can call remote method on b without params', function (t) {
 
 tape('b can call remote method on a with params', function (t) {
   t.plan(2)
-  b.call('add', [ 1, 2 ], function (err, result) {
+  b.call('add', 1, 2, function (err, result) {
     t.error(err)
     t.equal(result, 3)
   })
@@ -55,7 +55,7 @@ tape('serialization works', function (t) {
   t.plan(2)
   a.serialize = b.serialize = JSON.stringify
   a.deserialize = b.deserialize = JSON.parse
-  b.call('add', [ 41, 1 ], function (err, result) {
+  b.call('add', 41, 1, function (err, result) {
     t.error(err)
     t.equal(result, 42)
   })
