@@ -30,6 +30,13 @@ b.methods = {
 b.send = a.onmessage
 a.send = b.onmessage
 
+// not all transports require serialization, but if yours does, go nuts:
+var msgpack = require('msgpack-lite')
+a.serialize = JSON.stringify
+a.deserialize = msgpack.decode
+b.serialize = msgpack.encode
+b.deserialize = JSON.parse
+
 a.call('hello', function (err, answer) {
   console.log(answer) // => world
 })
