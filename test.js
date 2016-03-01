@@ -60,3 +60,49 @@ tape('serialization works', function (t) {
     t.equal(result, 42)
   })
 })
+
+tape('can handle unknown methods', function (t) {
+  t.plan(3)
+  b.defaultMethod = function (name, x, cb) {
+    t.equal(name, 'unknown')
+    t.equal(x, 42)
+    cb()
+  }
+  a.call('unknown', 42, function (err) {
+    t.error(err)
+  })
+})
+
+tape('can handle unknown notifications', function (t) {
+  t.plan(2)
+  b.defaultMethod = function (name, x) {
+    t.equal(name, 'unknown')
+    t.equal(x, 42)
+  }
+  a.call('unknown', 42)
+})
+
+tape('can timeout calls', function (t) {
+  t.plan(2)
+  a.timeout = 50
+  b.methods.slowMethod = function (cb) {
+    setTimeout(cb, 100)
+  }
+  a.call('slowMethod', function (err) {
+    t.equal(err.code, -32603)
+    t.equal(err.message, 'Call timed out')
+  })
+})
+
+tape('can use object-based params / result by setting objectMode', function (t) {
+  t.plan(3)
+  a.objectMode = b.objectMode = true
+  b.methods.question = function (params, cb) {
+    t.equal(params.question, 'universe')
+    cb(null, { answer: 42 })
+  }
+  a.call('question', { question: 'universe' }, function (err, result) {
+    t.error(err)
+    t.equal(result.answer, 42)
+  })
+})
