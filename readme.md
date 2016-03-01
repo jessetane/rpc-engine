@@ -51,5 +51,14 @@ b.call('add', 1, 1336, function (err, result) {
 $ npm run test
 ```
 
+## Releases
+* 1.1.0
+  * Bug fix (message `results` should be `result`)
+  * Handle parse and send errors
+  * Add timeout feature
+  * Add `objectMode` property for working with remotes that pass `params`, `result` as objects instead of arrays
+* 1.0
+  * First release
+
 ## License
 Public Domain
