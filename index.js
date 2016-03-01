@@ -76,8 +76,10 @@ RPC.prototype.onmessage = function (message) {
 RPC.prototype._handleRequest = function (name, message) {
   var id = message.id
   var params = message.params
-  if (!Array.isArray(params)) {
-    params = params === undefined ? [] : [ params ]
+  if (this.objectMode) {
+    params = [ params ]
+  } else if (params === undefined) {
+    params = []
   }
   var method = this.methods[name]
   if (!method && this.defaultMethod) {
