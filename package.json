@@ -8,6 +8,7 @@
   "devDependencies": {
     "tape": "^4.4.0"
   },
+  "repository": "https://github.com/jessetane/rpc-engine",
   "author": "jesse.tane@gmail.com",
   "license": "Public Domain"
 }
