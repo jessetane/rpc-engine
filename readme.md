@@ -1,4 +1,4 @@
-# RPC
+# rpc-engine
 Minimalist RPC library.
 
 ## Why
@@ -9,7 +9,7 @@ Based loosely on [JSON-RPC](http://www.jsonrpc.org/specification).
 
 ## Example
 ``` javascript
-var RPC = require('rpc')
+var RPC = require('rpc-engine')
 
 var a = new RPC()
 a.methods = {
@@ -52,6 +52,8 @@ $ npm run test
 ```
 
 ## Releases
+* 2.0.0
+  * Renamed to rpc-engine
 * 1.1.0
   * Bug fix (message `results` should be `result`)
   * Handle parse and send errors

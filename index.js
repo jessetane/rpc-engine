@@ -1,13 +1,13 @@
-module.exports = RPC
+module.exports = RPCEngine
 
-function RPC () {
+function RPCEngine () {
   this.methods = {}
   this.onmessage = this.onmessage.bind(this)
   this._callbacks = {}
   this._callback = 0
 }
 
-RPC.prototype.call = function (name) {
+RPCEngine.prototype.call = function (name) {
   var message = { method: name }
   var params = Array.prototype.slice.call(arguments, 1)
   var id, cb = params.slice(-1)[0]
@@ -32,7 +32,7 @@ RPC.prototype.call = function (name) {
   this._dosend(message, id)
 }
 
-RPC.prototype._dosend = function (message, cbid) {
+RPCEngine.prototype._dosend = function (message, cbid) {
   if (this.serialize) {
     message = this.serialize(message)
   }
@@ -48,7 +48,7 @@ RPC.prototype._dosend = function (message, cbid) {
   }
 }
 
-RPC.prototype.onmessage = function (message) {
+RPCEngine.prototype.onmessage = function (message) {
   if (this.deserialize) {
     try {
       message = this.deserialize(message)
@@ -73,7 +73,7 @@ RPC.prototype.onmessage = function (message) {
   }
 }
 
-RPC.prototype._handleRequest = function (name, message) {
+RPCEngine.prototype._handleRequest = function (name, message) {
   var id = message.id
   var params = message.params
   if (this.objectMode) {
@@ -120,7 +120,7 @@ RPC.prototype._handleRequest = function (name, message) {
   }
 }
 
-RPC.prototype._handleResponse = function (message) {
+RPCEngine.prototype._handleResponse = function (message) {
   var id = message.id
   var error = message.error
   var cb = this._callbacks[id]
