@@ -4,14 +4,24 @@ var RPC = require('./')
 var a = new RPC()
 var b = new RPC()
 
-a.send = b.onmessage
+a.send = function (message) {
+  // use setTimeout here to force async sending and
+  // avoid nested try/catch which could never happen irl
+  setTimeout(function () {
+    b.onmessage(message)
+  })
+}
 a.methods = {
   add: function (a, b, cb) {
     cb(null, a + b)
   }
 }
 
-b.send = a.onmessage
+b.send = function (message) {
+  setTimeout(function () {
+    a.onmessage(message)
+  })
+}
 b.methods = {
   hello: function (cb) {
     cb(null, 'world')
@@ -90,13 +100,15 @@ tape('can handle unknown notifications', function (t) {
 
 tape('can timeout calls', function (t) {
   t.plan(2)
+  var timeout = null
   a.timeout = 50
   b.methods.slowMethod = function (cb) {
-    setTimeout(cb, 100)
+    timeout = setTimeout(cb, 100)
   }
   a.call('slowMethod', function (err) {
     t.equal(err.code, -32603)
     t.equal(err.message, 'Call timed out')
+    clearTimeout(timeout)
     delete a.timeout
     delete b.methods.slowMethod
   })
