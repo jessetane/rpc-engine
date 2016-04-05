@@ -117,3 +117,26 @@ tape('can use object-based params / result by setting objectMode', function (t) 
     delete b.methods.question
   })
 })
+
+tape('apply methods against instance by default', function (t) {
+  t.plan(2)
+  a.instanceMethod = function (cb) {
+    t.equal(this, a)
+    cb()
+  }
+  a.methods.instanceMethod = a.instanceMethod
+  b.call('instanceMethod', function (err) {
+    t.error(err)
+    delete a.instanceMethod
+  })
+})
+
+tape('apply notifications against instance by default', function (t) {
+  t.plan(1)
+  a.instanceNotification = function () {
+    t.equal(this, a)
+    delete a.instanceNotification
+  }
+  a.methods.instanceNotification = a.instanceNotification
+  b.call('instanceNotification')
+})
