@@ -58,6 +58,10 @@ tape('serialization works', function (t) {
   b.call('add', 41, 1, function (err, result) {
     t.error(err)
     t.equal(result, 42)
+    delete a.serialize
+    delete a.deserialize
+    delete b.serialize
+    delete b.deserialize
   })
 })
 
@@ -70,6 +74,7 @@ tape('can handle unknown methods', function (t) {
   }
   a.call('unknown', 42, function (err) {
     t.error(err)
+    delete b.defaultMethod
   })
 })
 
@@ -78,6 +83,7 @@ tape('can handle unknown notifications', function (t) {
   b.defaultMethod = function (name, x) {
     t.equal(name, 'unknown')
     t.equal(x, 42)
+    delete b.defaultMethod
   }
   a.call('unknown', 42)
 })
@@ -91,6 +97,8 @@ tape('can timeout calls', function (t) {
   a.call('slowMethod', function (err) {
     t.equal(err.code, -32603)
     t.equal(err.message, 'Call timed out')
+    delete a.timeout
+    delete b.slowMethod
   })
 })
 
@@ -104,5 +112,8 @@ tape('can use object-based params / result by setting objectMode', function (t) 
   a.call('question', { question: 'universe' }, function (err, result) {
     t.error(err)
     t.equal(result.answer, 42)
+    delete a.objectMode
+    delete b.objectMode
+    delete b.methods.question
   })
 })
