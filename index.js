@@ -53,15 +53,13 @@ RPCEngine.prototype.onmessage = function (message) {
     try {
       message = this.deserialize(message)
     } catch (err) {
-      if (message.id) {
-        this._dosend({
-          id: message.id,
-          error: {
-            code: -32700,
-            message: 'Parse error'
-          }
-        })
-      }
+      this._dosend({
+        id: message && message.id,
+        error: {
+          code: -32700,
+          message: 'Parse error'
+        }
+      })
       return
     }
   }
@@ -122,16 +120,22 @@ RPCEngine.prototype._handleRequest = function (name, message) {
 
 RPCEngine.prototype._handleResponse = function (message) {
   var id = message.id
-  var error = message.error
   var cb = this._callbacks[id]
   delete this._callbacks[id]
+  var error = message.error
+  var err = null
+  if (error) {
+    err = new Error(error.message)
+    err.code = error.code
+    err.data = error.data
+  }
   if (cb) {
-    var err = null
-    if (error) {
-      err = new Error(error.message)
-      err.code = error.code
-      err.data = error.data
-    }
     cb.apply(null, [err].concat(message.result))
+  } else if (err) {
+    if (this.onerror) {
+      this.onerror(err)
+    } else {
+      throw err
+    }
   }
 }
