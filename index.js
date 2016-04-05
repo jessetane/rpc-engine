@@ -88,11 +88,11 @@ RPCEngine.prototype._handleRequest = function (name, message) {
   }
   if (id === undefined) {
     if (method) {
-      method.apply(null, params)
+      method.apply(this, params)
     }
   } else if (method) {
     var self = this
-    method.apply(null, params.concat(function (err) {
+    method.apply(this, params.concat(function (err) {
       if (err) {
         err = {
           message: err.message,
