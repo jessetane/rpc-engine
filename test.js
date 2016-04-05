@@ -182,3 +182,44 @@ tape('respond to parse errors via callback if possible', function (t) {
     delete a.deserialize
   })
 })
+
+tape('catch send errors for method calls', function (t) {
+  t.plan(2)
+  var oldSend = b.send
+  b.send = function () {
+    throw new Error('Send failed')
+  }
+  b.call('add', 1, 2, function (err) {
+    t.equal(err.code, -32603)
+    t.equal(err.message, 'Send failed')
+    b.send = oldSend
+  })
+})
+
+tape('catch send errors for notifications when onerror handler is present', function (t) {
+  t.plan(2)
+  var oldSend = b.send
+  b.send = function () {
+    throw new Error('Send failed')
+  }
+  b.onerror = function (err) {
+    t.equal(err.code, -32603)
+    t.equal(err.message, 'Send failed')
+    b.send = oldSend
+    delete b.onerror
+  }
+  b.call('notify')
+})
+
+tape('silence send errors for notifications when onerror handler is not present', function (t) {
+  t.plan(1)
+  var oldSend = b.send
+  b.send = function () {
+    throw new Error('Send failed')
+  }
+  b.call('notify')
+  setTimeout(function () {
+    b.send = oldSend
+    t.pass()
+  }, 50)
+})
