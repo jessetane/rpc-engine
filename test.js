@@ -98,7 +98,7 @@ tape('can timeout calls', function (t) {
     t.equal(err.code, -32603)
     t.equal(err.message, 'Call timed out')
     delete a.timeout
-    delete b.slowMethod
+    delete b.methods.slowMethod
   })
 })
 
@@ -127,6 +127,7 @@ tape('apply methods against instance by default', function (t) {
   a.methods.instanceMethod = a.instanceMethod
   b.call('instanceMethod', function (err) {
     t.error(err)
+    delete a.methods.instanceMethod
     delete a.instanceMethod
   })
 })
