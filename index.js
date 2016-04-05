@@ -39,11 +39,13 @@ RPCEngine.prototype._dosend = function (message, cbid) {
   try {
     this.send(message)
   } catch (err) {
+    err.code = -32603
     if (cbid !== undefined) {
       var cb = this._callbacks[cbid]
       delete this._callbacks[cbid]
-      err.code = -32603
       cb(err)
+    } else if (this.onerror) {
+      this.onerror(err)
     }
   }
 }
