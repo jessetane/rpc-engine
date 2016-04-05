@@ -148,8 +148,37 @@ tape('apply notifications against instance by default', function (t) {
   t.plan(1)
   a.instanceNotification = function () {
     t.equal(this, a)
+    delete a.methods.instanceNotification
     delete a.instanceNotification
   }
   a.methods.instanceNotification = a.instanceNotification
   b.call('instanceNotification')
+})
+
+tape('respond to parse errors', function (t) {
+  t.plan(2)
+  a.deserialize = JSON.parse
+  b.serialize = function () {
+    return undefined
+  }
+  b.onerror = function (err) {
+    t.equal(err.code, -32700)
+    t.equal(err.message, 'Parse error')
+    delete a.deserialize
+    delete b.serialize
+    delete b.onerror
+  }
+  b.call('add', 1, 2, function (err, result) {
+    t.fail()
+  })
+})
+
+tape('respond to parse errors via callback if possible', function (t) {
+  t.plan(2)
+  a.deserialize = JSON.parse
+  b.call('add', 1, 2, function (err) {
+    t.equal(err.code, -32700)
+    t.equal(err.message, 'Parse error')
+    delete a.deserialize
+  })
 })
