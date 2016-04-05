@@ -30,7 +30,7 @@ b.methods = {
 b.send = a.onmessage
 a.send = b.onmessage
 
-// not all transports require serialization, but if yours does, go nuts:
+// not all transports require manual serialization (e.g. structured clone in the browser), but if yours does, go nuts:
 var msgpack = require('msgpack-lite')
 a.serialize = JSON.stringify
 a.deserialize = msgpack.decode
@@ -52,6 +52,8 @@ $ npm run test
 ```
 
 ## Releases
+* 2.1.0
+  * Handle parse errors as described in the spec
 * 2.0.0
   * Renamed to rpc-engine
 * 1.1.0
