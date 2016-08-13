@@ -20,7 +20,7 @@ RPCEngine.prototype.call = function (name) {
     message.params = this.objectMode ? params[0] : params
   }
   if (cb && this.timeout) {
-    setTimeout(function () {
+    var timer = setTimeout(function () {
       if (this._callbacks[id]) {
         delete this._callbacks[id]
         var err = new Error('Call timed out')
@@ -28,6 +28,7 @@ RPCEngine.prototype.call = function (name) {
         cb(err)
       }
     }.bind(this), this.timeout)
+    if (timer.unref) timer.unref()
   }
   this._dosend(message, id)
 }
