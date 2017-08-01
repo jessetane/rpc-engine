@@ -9,7 +9,7 @@ a.send = function (message) {
   // use setTimeout here to force async sending and
   // avoid nested try/catch which could never happen irl
   setTimeout(function () {
-    b.onmessage(message)
+    b.receive(message)
   })
 }
 a.methods.add = function (a, b, cb) {
@@ -18,7 +18,7 @@ a.methods.add = function (a, b, cb) {
 
 b.send = function (message) {
   setTimeout(function () {
-    a.onmessage(message)
+    a.receive(message)
   })
 }
 b.methods.hello = function (cb) {

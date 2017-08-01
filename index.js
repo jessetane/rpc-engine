@@ -7,7 +7,7 @@ inherits(RPCEngine, Emitter)
 
 function RPCEngine () {
   Emitter.call(this)
-  this.onmessage = this.onmessage.bind(this)
+  this.receive = this.receive.bind(this)
   this.methods = {
     subscribe: this._onsubscribe.bind(this),
     unsubscribe: this._onunsubscribe.bind(this)
@@ -62,7 +62,7 @@ RPCEngine.prototype._dosend = function (message, cbid) {
   }
 }
 
-RPCEngine.prototype.onmessage = function (message) {
+RPCEngine.prototype.receive = function (message) {
   if (this.deserialize) {
     try {
       message = this.deserialize(message)
