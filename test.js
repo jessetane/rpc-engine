@@ -1,5 +1,6 @@
 var tape = require('tape')
 var RPC = require('./')
+var Emitter = require('events')
 
 var a = new RPC()
 var b = new RPC()
@@ -11,10 +12,8 @@ a.send = function (message) {
     b.onmessage(message)
   })
 }
-a.methods = {
-  add: function (a, b, cb) {
-    cb(null, a + b)
-  }
+a.methods.add = function (a, b, cb) {
+  cb(null, a + b)
 }
 
 b.send = function (message) {
@@ -22,10 +21,8 @@ b.send = function (message) {
     a.onmessage(message)
   })
 }
-b.methods = {
-  hello: function (cb) {
-    cb(null, 'world')
-  }
+b.methods.hello = function (cb) {
+  cb(null, 'world')
 }
 
 tape('a can call remote method on b without params', function (t) {
@@ -249,37 +246,6 @@ tape('discard errors from remote for which we have no matching callback and erro
   })
 })
 
-tape('implement remote event subscription', function (t) {
-  t.plan(3)
-  a.methods.subscribe = function (eventName, cb) {
-    t.equal(eventName, 'wow')
-    cb()
-    a.call(eventName, 42)
-  }
-  a.methods.unsubscribe = function (eventName) {
-    t.equal(eventName, 'wow')
-  }
-  b.subscribe('wow', handler)
-  function handler (number) {
-    t.equal(number, 42)
-    b.unsubscribe('wow', handler)
-  }
-})
-
-tape('emit an error if remote subscription fails', function (t) {
-  t.plan(1)
-  delete a.methods.subscribe
-  delete a.methods.unsubscribe
-  b.on('error', onerror)
-  function onerror (err) {
-    t.equal(err.message, 'Method not found')
-    b.removeListener('error', onerror)
-  }
-  b.subscribe('wow', function () {
-    t.fail()
-  })
-})
-
 tape('should allow path delimited method access', function (t) {
   t.plan(1)
   a.methods.outer = {
@@ -291,5 +257,34 @@ tape('should allow path delimited method access', function (t) {
   }
   b.call('outer.inner.core', function (err) {
     t.error(err)
+  })
+})
+
+tape('implement remote event subscription', function (t) {
+  t.plan(1)
+  a.feeds.outer = {
+    inner: {
+      core: new Emitter()
+    }
+  }
+  b.subscribe('outer.inner.core.wow', onwow)
+  function onwow (evt) {
+    t.equal(evt, 42)
+    b.unsubscribe('wow', onwow)
+  }
+  setTimeout(() => {
+    a.feeds.outer.inner.core.emit('wow', 42)
+  })
+})
+
+tape('emit an error if remote subscription fails', function (t) {
+  t.plan(1)
+  b.on('error', onerror)
+  function onerror (err) {
+    t.equal(err.message, 'Feed not found')
+    b.removeListener('error', onerror)
+  }
+  b.subscribe('some.nonexistant.feed.wow', function () {
+    t.fail()
   })
 })

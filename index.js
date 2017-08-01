@@ -7,9 +7,15 @@ inherits(RPCEngine, Emitter)
 
 function RPCEngine () {
   Emitter.call(this)
-  this.methods = {}
   this.onmessage = this.onmessage.bind(this)
+  this.methods = {
+    subscribe: this._onsubscribe.bind(this),
+    unsubscribe: this._onunsubscribe.bind(this)
+  }
   this._callbacks = {}
+  this.feeds = new Emitter()
+  this._subscriptions = {}
+  this.pathDelimiter = '.'
 }
 
 RPCEngine.prototype.call = function (name) {
@@ -158,16 +164,53 @@ RPCEngine.prototype.subscribe = function (name, fn) {
       if (err) {
         self.removeListener(name, fn)
         self.emit('error', err)
+      } else {
+        self.removeListener(name, dummy)
+        self.on(name, fn)
       }
     })
   }
-  Emitter.prototype.on.call(this, name, fn)
+  var dummy = function () {}
+  this.on(name, dummy)
+}
+
+RPCEngine.prototype._onsubscribe = function (name, cb) {
+  var path = name.split(this.pathDelimiter)
+  var feed = this._follow(path.slice(0, -1), this.feeds)
+  if (!feed) {
+    cb(new Error('Feed not found'))
+    return
+  }
+  if (!this._subscriptions[name]) {
+    var self = this
+    var event = path[path.length - 1]
+    var handler = function () {
+      var args = Array.prototype.slice.call(arguments)
+      args.unshift(name)
+      self.call.apply(self, args)
+    }
+    this._subscriptions[name] = [
+      feed,
+      event,
+      handler
+    ]
+    feed.on(event, handler)
+  }
+  cb()
 }
 
 RPCEngine.prototype.unsubscribe = function (name, fn) {
-  Emitter.prototype.removeListener.call(this, name, fn)
+  this.removeListener(name, fn)
   if (this.listenerCount(name) === 0) {
     this.call('unsubscribe', name)
+  }
+}
+
+RPCEngine.prototype._onunsubscribe = function (name) {
+  var subscription = this._subscriptions[name]
+  if (subscription) {
+    subscription[0].removeListener(subscription[1], subscription[2])
+    delete this._subscriptions[name]
   }
 }
 
