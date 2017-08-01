@@ -10,7 +10,6 @@ function RPCEngine () {
   this.methods = {}
   this.onmessage = this.onmessage.bind(this)
   this._callbacks = {}
-  this._callback = 0
 }
 
 RPCEngine.prototype.call = function (name) {
@@ -18,7 +17,7 @@ RPCEngine.prototype.call = function (name) {
   var params = Array.prototype.slice.call(arguments, 1)
   var id, cb = params.slice(-1)[0]
   if (typeof cb === 'function') {
-    id = message.id = this._callback++
+    id = message.id = Math.random()
     this._callbacks[id] = cb
     params.pop()
   }
