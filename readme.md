@@ -65,7 +65,7 @@ $ npm run test
 ## Releases
 * 4.0.0
   * Allow path delimited method and event names
-  * Add feeds property and implement `on{un}subscribe()`
+  * Add feeds property and implement `{un}subscribe()` on the receive side
   * Change `onmessage` to `receive` (breaking change)
 * 3.1.0
   * Switch license to MIT

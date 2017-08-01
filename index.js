@@ -9,8 +9,8 @@ function RPCEngine () {
   Emitter.call(this)
   this.receive = this.receive.bind(this)
   this.methods = {
-    subscribe: this._onsubscribe.bind(this),
-    unsubscribe: this._onunsubscribe.bind(this)
+    subscribe: this._subscribe.bind(this),
+    unsubscribe: this._unsubscribe.bind(this)
   }
   this._callbacks = {}
   this.feeds = new Emitter()
@@ -174,7 +174,7 @@ RPCEngine.prototype.subscribe = function (name, fn) {
   this.on(name, dummy)
 }
 
-RPCEngine.prototype._onsubscribe = function (name, cb) {
+RPCEngine.prototype._subscribe = function (name, cb) {
   var path = name.split(this.pathDelimiter)
   var feed = this._follow(path.slice(0, -1), this.feeds)
   if (!feed) {
@@ -206,7 +206,7 @@ RPCEngine.prototype.unsubscribe = function (name, fn) {
   }
 }
 
-RPCEngine.prototype._onunsubscribe = function (name) {
+RPCEngine.prototype._unsubscribe = function (name) {
   var subscription = this._subscriptions[name]
   if (subscription) {
     subscription[0].removeListener(subscription[1], subscription[2])
