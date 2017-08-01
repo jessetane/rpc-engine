@@ -46,7 +46,7 @@ b.call('add', 1, 1336, function (err, result) {
   console.log(result) // => 1337
 })
 
-// you can also `subscribe()` to and `unsubscribe()` from remote events:
+// you can also subscribe() to and unsubscribe() from remote events:
 // (note the remote must of course implement handlers for these methods)
 a.methods.subscribe = function (eventName, confirmSubscription) {
   this.subscribed = true
