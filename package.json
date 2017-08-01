@@ -5,6 +5,9 @@
   "scripts": {
     "test": "node test"
   },
+  "dependencies": {
+    "inherits": "^2.0.3"
+  },
   "devDependencies": {
     "tape": "^4.4.0"
   },

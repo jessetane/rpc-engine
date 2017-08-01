@@ -1,6 +1,12 @@
 module.exports = RPCEngine
 
+var Emitter = require('events')
+var inherits = require('inherits')
+
+inherits(RPCEngine, Emitter)
+
 function RPCEngine () {
+  Emitter.call(this)
   this.methods = {}
   this.onmessage = this.onmessage.bind(this)
   this._callbacks = {}
