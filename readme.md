@@ -71,6 +71,8 @@ $ npm run test
 ```
 
 ## Releases
+* 3.1.0
+  * Switch license to MIT
 * 3.0.0
   * Inherit from EventEmitter
   * Use `emit('error', error)` rather than the onerror property (this is a breaking change)
@@ -89,4 +91,4 @@ $ npm run test
   * First release
 
 ## License
-Public Domain
+MIT
