@@ -213,6 +213,14 @@ RPCEngine.prototype._unsubscribe = function (name) {
   }
 }
 
+RPCEngine.prototype.close = function () {
+  for (var name in this._subscriptions) {
+    var subscription = this._subscriptions[name]
+    subscription[0].removeListener(subscription[1], subscription[2])
+    delete this._subscriptions[name]
+  }
+}
+
 RPCEngine.prototype._follow = function (path, object) {
   return path.reduce(function (object, property) {
     return object && object[property]
