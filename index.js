@@ -161,11 +161,10 @@ RPCEngine.prototype.subscribe = function (name, fn) {
   if (this.listenerCount(name) === 0) {
     var self = this
     this.call('subscribe', name, function (err) {
+      self.removeListener(name, dummy)
       if (err) {
-        self.removeListener(name, fn)
         self.emit('error', err)
       } else {
-        self.removeListener(name, dummy)
         self.on(name, fn)
       }
     })
