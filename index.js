@@ -83,11 +83,12 @@ RPCEngine.prototype._handleRequest = function (name, message) {
   var id = message.id
   var params = message.params
   if (this.objectMode) {
-    params = [ params ]
+    params = [params]
   } else if (params === undefined) {
     params = []
   }
-  var method = this.methods[name]
+  var path = name.split(this.pathDelimiter)
+  var method = this._follow(path, this.methods)
   if (!method && this.defaultMethod) {
     params.unshift(name)
     method = this.defaultMethod
@@ -168,4 +169,10 @@ RPCEngine.prototype.unsubscribe = function (name, fn) {
   if (this.listenerCount(name) === 0) {
     this.call('unsubscribe', name)
   }
+}
+
+RPCEngine.prototype._follow = function (path, object) {
+  return path.reduce(function (object, property) {
+    return object && object[property]
+  }, object)
 }

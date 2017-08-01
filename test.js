@@ -279,3 +279,17 @@ tape('emit an error if remote subscription fails', function (t) {
     t.fail()
   })
 })
+
+tape('should allow path delimited method access', function (t) {
+  t.plan(1)
+  a.methods.outer = {
+    inner: {
+      core: function (cb) {
+        cb()
+      }
+    }
+  }
+  b.call('outer.inner.core', function (err) {
+    t.error(err)
+  })
+})
