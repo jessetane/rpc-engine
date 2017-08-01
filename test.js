@@ -161,12 +161,13 @@ tape('respond to parse errors', function (t) {
   b.serialize = function () {
     return undefined
   }
-  b.onerror = function (err) {
+  b.on('error', onerror)
+  function onerror (err) {
     t.equal(err.code, -32700)
     t.equal(err.message, 'Parse error')
     delete a.deserialize
     delete b.serialize
-    delete b.onerror
+    b.removeListener('error', onerror)
   }
   b.call('add', 1, 2, function (err, result) {
     t.fail()
@@ -196,22 +197,23 @@ tape('catch send errors for method calls', function (t) {
   })
 })
 
-tape('catch send errors for notifications when onerror handler is present', function (t) {
+tape('catch send errors for notifications when error handler is present', function (t) {
   t.plan(2)
   var oldSend = b.send
   b.send = function () {
     throw new Error('Send failed')
   }
-  b.onerror = function (err) {
+  b.on('error', onerror)
+  function onerror (err) {
     t.equal(err.code, -32603)
     t.equal(err.message, 'Send failed')
     b.send = oldSend
-    delete b.onerror
+    b.removeListener('error', onerror)
   }
   b.call('notify')
 })
 
-tape('silence send errors for notifications when onerror handler is not present', function (t) {
+tape('discard send errors for notifications when error handler is not present', function (t) {
   t.plan(1)
   var oldSend = b.send
   b.send = function () {
@@ -222,4 +224,27 @@ tape('silence send errors for notifications when onerror handler is not present'
     b.send = oldSend
     t.pass()
   }, 50)
+})
+
+tape('discard errors from remote for which we have no matching callback and error handler is not present', function (t) {
+  t.plan(1)
+  a.on('error', onerror)
+  function onerror (err) {
+    t.equal(err.message, 'bogus error')
+    a.removeListener('error', onerror)
+    b.send({
+      id: 999,
+      error: {
+        code: -2,
+        message: 'another bogus error'
+      }
+    })
+  }
+  b.send({
+    id: 998,
+    error: {
+      code: -1,
+      message: 'bogus error'
+    }
+  })
 })

@@ -51,8 +51,8 @@ RPCEngine.prototype._dosend = function (message, cbid) {
       var cb = this._callbacks[cbid]
       delete this._callbacks[cbid]
       cb(err)
-    } else if (this.onerror) {
-      this.onerror(err)
+    } else if (this.listenerCount('error') > 0) {
+      this.emit('error', err)
     }
   }
 }
@@ -140,11 +140,7 @@ RPCEngine.prototype._handleResponse = function (message) {
   }
   if (cb) {
     cb.apply(null, [err].concat(message.result))
-  } else if (err) {
-    if (this.onerror) {
-      this.onerror(err)
-    } else {
-      throw err
-    }
+  } else if (err && this.listenerCount('error') > 0) {
+    this.emit('error', err)
   }
 }
