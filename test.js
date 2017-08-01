@@ -248,3 +248,34 @@ tape('discard errors from remote for which we have no matching callback and erro
     }
   })
 })
+
+tape('implement remote event subscription', function (t) {
+  t.plan(3)
+  a.methods.subscribe = function (eventName, cb) {
+    t.equal(eventName, 'wow')
+    cb()
+    a.call(eventName, 42)
+  }
+  a.methods.unsubscribe = function (eventName) {
+    t.equal(eventName, 'wow')
+  }
+  b.subscribe('wow', handler)
+  function handler (number) {
+    t.equal(number, 42)
+    b.unsubscribe('wow', handler)
+  }
+})
+
+tape('emit an error if remote subscription fails', function (t) {
+  t.plan(1)
+  delete a.methods.subscribe
+  delete a.methods.unsubscribe
+  b.on('error', onerror)
+  function onerror (err) {
+    t.equal(err.message, 'Method not found')
+    b.removeListener('error', onerror)
+  }
+  b.subscribe('wow', function () {
+    t.fail()
+  })
+})

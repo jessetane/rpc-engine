@@ -97,6 +97,12 @@ RPCEngine.prototype._handleRequest = function (name, message) {
     if (method) {
       method.apply(this, params)
     }
+    if (this.listenerCount(name) > 0) {
+      if (!method || method !== this.defaultMethod) {
+        params.unshift(name)
+      }
+      this.emit.apply(this, params)
+    }
   } else if (method) {
     var self = this
     method.apply(this, params.concat(function (err) {
@@ -142,5 +148,25 @@ RPCEngine.prototype._handleResponse = function (message) {
     cb.apply(null, [err].concat(message.result))
   } else if (err && this.listenerCount('error') > 0) {
     this.emit('error', err)
+  }
+}
+
+RPCEngine.prototype.subscribe = function (name, fn) {
+  if (this.listenerCount(name) === 0) {
+    var self = this
+    this.call('subscribe', name, function (err) {
+      if (err) {
+        self.removeListener(name, fn)
+        self.emit('error', err)
+      }
+    })
+  }
+  Emitter.prototype.on.call(this, name, fn)
+}
+
+RPCEngine.prototype.unsubscribe = function (name, fn) {
+  Emitter.prototype.removeListener.call(this, name, fn)
+  if (this.listenerCount(name) === 0) {
+    this.call('unsubscribe', name)
   }
 }
