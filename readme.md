@@ -12,25 +12,23 @@ Other stuff seems really intent on making serialization or transport decisions f
 var RPC = require('rpc-engine')
 
 var a = new RPC()
-a.methods = {
-  add: function (a, b, cb) {
-    cb(null, a + b)
-  }
+a.methods.add = function (a, b, cb) {
+  cb(null, a + b)
 }
 
 var b = new RPC()
-b.methods = {
+b.methods.nested = {
   hello: function (cb) {
     cb(null, 'world')
   }
 }
 
-// in real life you'll have some stream-like transport
-// in between but that's outside the scope of this module
-b.send = a.onmessage
-a.send = b.onmessage
+// in real life you'll have some transport in between
+// but that's outside the scope of this module
+b.send = a.receive
+a.send = b.receive
 
-// not all transports require manual serialization (we should have
+// not all transports require manual serialization (e.g. we should have
 // structured clone in browserland), but if yours does, go nuts:
 var msgpack = require('msgpack-lite')
 a.serialize = JSON.stringify
@@ -38,31 +36,25 @@ a.deserialize = msgpack.decode
 b.serialize = msgpack.encode
 b.deserialize = JSON.parse
 
-a.call('hello', function (err, answer) {
-  console.log(answer) // => world
-})
-
 b.call('add', 1, 1336, function (err, result) {
   console.log(result) // => 1337
 })
 
-// you can also subscribe() to and unsubscribe() from remote events:
-// (note the remote must of course implement handlers for these methods)
-a.methods.subscribe = function (eventName, confirmSubscription) {
-  this.subscribed = true
-  confirmSubscription() // subscribe implementations must confirm new subscriptions
-}
-a.methods.unsubscribe = function (eventName) {
-  this.subscribed = false
-  // no need to confirm on unsubscribe
-}
+a.call('nested.hello', function (err, answer) {
+  console.log(answer) // => world
+})
+
+// emit events from .feeds to expose them across the ether:
 b.subscribe('some-event', eventHandler)
 function eventHandler (evt) {
-  console.log('got event', evt) // evt should be 42
+  console.log(evt) // => 42
   b.unsubscribe('some-event', eventHandler)
 }
-// dispatch events by calling the remote with the event name and no callback:
-a.call(eventName, 42)
+a.feeds.emit('some-event', 42)
+
+// emitters can also be nested in .feeds:
+a.feeds.subfeed = new Emitter()
+b.subscribe('subfeed.some-event', eventHandler)
 ```
 
 ## Test
@@ -71,6 +63,10 @@ $ npm run test
 ```
 
 ## Releases
+* 4.0.0
+  * Allow path delimited method and event names
+  * Add feeds property and implement `on{un}subscribe()`
+  * Change `onmessage` to `receive` (breaking change)
 * 3.1.0
   * Switch license to MIT
 * 3.0.0
