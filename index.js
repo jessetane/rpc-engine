@@ -161,20 +161,18 @@ RPCEngine.prototype._handleResponse = function (message) {
 }
 
 RPCEngine.prototype.subscribe = function (name, fn) {
-  if (this.listenerCount(name) === 0) {
+  if (!this._subscriptions.remote[name]) {
+    this._subscriptions.remote[name] = fn
     var self = this
     this.call('subscribe', name, function (err) {
-      self.removeListener(name, dummy)
+      if (!self._subscriptions.remote[name]) return
       if (err) {
         self.emit('error', err)
       } else {
-        self._subscriptions.remote[name] = fn
         self.on(name, fn)
       }
     })
   }
-  var dummy = function () {}
-  this.on(name, dummy)
 }
 
 RPCEngine.prototype._subscribe = function (name, cb) {
