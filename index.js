@@ -14,7 +14,10 @@ function RPCEngine () {
   }
   this._callbacks = {}
   this.feeds = new Emitter()
-  this._subscriptions = {}
+  this._subscriptions = {
+    local: {},
+    remote: {}
+  }
   this.pathDelimiter = '.'
 }
 
@@ -165,6 +168,7 @@ RPCEngine.prototype.subscribe = function (name, fn) {
       if (err) {
         self.emit('error', err)
       } else {
+        self._subscriptions.remote[name] = fn
         self.on(name, fn)
       }
     })
@@ -180,25 +184,26 @@ RPCEngine.prototype._subscribe = function (name, cb) {
     cb(new Error('Feed not found'))
     return
   }
-  if (!this._subscriptions[name]) {
+  if (!this._subscriptions.local[name]) {
     var self = this
     var event = path[path.length - 1]
-    var handler = function () {
+    var fn = function () {
       var args = Array.prototype.slice.call(arguments)
       args.unshift(name)
       self.call.apply(self, args)
     }
-    this._subscriptions[name] = [
+    this._subscriptions.local[name] = [
       feed,
       event,
-      handler
+      fn
     ]
-    feed.on(event, handler)
+    feed.on(event, fn)
   }
   cb()
 }
 
 RPCEngine.prototype.unsubscribe = function (name, fn) {
+  delete this._subscriptions.remote[name]
   this.removeListener(name, fn)
   if (this.listenerCount(name) === 0) {
     this.call('unsubscribe', name)
@@ -206,18 +211,23 @@ RPCEngine.prototype.unsubscribe = function (name, fn) {
 }
 
 RPCEngine.prototype._unsubscribe = function (name) {
-  var subscription = this._subscriptions[name]
+  var subscription = this._subscriptions.local[name]
   if (subscription) {
     subscription[0].removeListener(subscription[1], subscription[2])
-    delete this._subscriptions[name]
+    delete this._subscriptions.local[name]
   }
 }
 
 RPCEngine.prototype.close = function () {
-  for (var name in this._subscriptions) {
-    var subscription = this._subscriptions[name]
+  for (var name in this._subscriptions.local) {
+    var subscription = this._subscriptions.local[name]
+    delete this._subscriptions.local[name]
     subscription[0].removeListener(subscription[1], subscription[2])
-    delete this._subscriptions[name]
+  }
+  for (var name in this._subscriptions.remote) {
+    var fn = this._subscriptions.remote[name]
+    delete this._subscriptions.remote[name]
+    this.removeListener(name, fn)
   }
 }
 
