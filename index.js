@@ -1,31 +1,53 @@
-module.exports = RPCEngine
+module.exports = RpcEngine
 
 var Emitter = require('events')
 var inherits = require('inherits')
 
-inherits(RPCEngine, Emitter)
+inherits(RpcEngine, Emitter)
 
-function RPCEngine () {
+function RpcEngine (opts) {
   Emitter.call(this)
-  this.receive = this.receive.bind(this)
-  this.methods = {
-    subscribe: this._subscribe.bind(this),
-    unsubscribe: this._unsubscribe.bind(this)
+  for (var key in opts) {
+    this[key] = opts[key]
+  }
+  this.objectMode = !!this.objectMode
+  if (!this.pathDelimiter) {
+    this.pathDelimiter = '.'
+  }
+  if (!this._interface) {
+    this._interface = {}
   }
   this._callbacks = {}
-  this.feeds = new Emitter()
-  this._subscriptions = {
-    local: {},
-    remote: {}
-  }
-  this.pathDelimiter = '.'
+  this.receive = this.receive.bind(this)
+  this.close = this.close.bind(this)
 }
 
-RPCEngine.prototype.call = function (name) {
+Object.defineProperty(RpcEngine.prototype, 'interface', {
+  get: function () {
+    return this._interface
+  },
+  set: function (interface) {
+    if (this._interface) {
+      throw new Error('Interface cannot be directly set')
+    } else {
+      this._interface = interface
+    }
+  }
+})
+
+RpcEngine.prototype.lookupInterface = function (path) {
+  return path.reduce(function (interface, pathComponent) {
+    return interface && interface[pathComponent]
+  }, this._interface)
+}
+
+RpcEngine.prototype.call = function (name) {
   var message = { method: name }
   var params = Array.prototype.slice.call(arguments, 1)
-  var id, cb = params.slice(-1)[0]
-  if (typeof cb === 'function') {
+  var id = undefined
+  var cb = params.slice(-1)[0]
+  var cbIsFunction = typeof cb === 'function'
+  if (cbIsFunction) {
     id = message.id = Math.random()
     this._callbacks[id] = cb
     params.pop()
@@ -33,21 +55,19 @@ RPCEngine.prototype.call = function (name) {
   if (params.length) {
     message.params = this.objectMode ? params[0] : params
   }
-  if (cb && this.timeout) {
-    var timer = setTimeout(function () {
-      if (this._callbacks[id]) {
-        delete this._callbacks[id]
-        var err = new Error('Call timed out')
-        err.code = -32603
-        cb(err)
-      }
-    }.bind(this), this.timeout)
-    if (timer.unref) timer.unref()
+  if (cbIsFunction && this.timeout) {
+    var self = this
+    cb.timeout = setTimeout(function () {
+      delete self._callbacks[id]
+      var err = new Error('Call timed out')
+      err.code = -32603
+      cb(err)
+    }, this.timeout)
   }
   this._dosend(message, id)
 }
 
-RPCEngine.prototype._dosend = function (message, cbid) {
+RpcEngine.prototype._dosend = function (message, cbid) {
   if (this.serialize) {
     message = this.serialize(message)
   }
@@ -65,7 +85,7 @@ RPCEngine.prototype._dosend = function (message, cbid) {
   }
 }
 
-RPCEngine.prototype.receive = function (message) {
+RpcEngine.prototype.receive = function (message) {
   if (this.deserialize) {
     try {
       message = this.deserialize(message)
@@ -88,23 +108,26 @@ RPCEngine.prototype.receive = function (message) {
   }
 }
 
-RPCEngine.prototype._handleRequest = function (name, message) {
+RpcEngine.prototype._handleRequest = function (name, message) {
   var id = message.id
   var params = message.params
-  if (this.objectMode) {
-    params = [params]
-  } else if (params === undefined) {
-    params = []
+  if (!Array.isArray(params)) {
+    if (params && typeof params === 'object') {
+      params = [params]
+    } else {
+      params = []
+    }
   }
   var path = name.split(this.pathDelimiter)
-  var method = this._follow(path, this.methods)
+  var interface = this.lookupInterface(path.slice(0, -1))
+  method = interface && interface[path[path.length - 1]]
   if (!method && this.defaultMethod) {
     params.unshift(name)
     method = this.defaultMethod
   }
   if (id === undefined) {
     if (method) {
-      method.apply(this, params)
+      method.apply(interface, params)
     }
     if (this.listenerCount(name) > 0) {
       if (!method || method !== this.defaultMethod) {
@@ -114,7 +137,7 @@ RPCEngine.prototype._handleRequest = function (name, message) {
     }
   } else if (method) {
     var self = this
-    method.apply(this, params.concat(function (err) {
+    method.apply(interface, params.concat(function (err) {
       if (err) {
         err = {
           message: err.message,
@@ -142,10 +165,7 @@ RPCEngine.prototype._handleRequest = function (name, message) {
   }
 }
 
-RPCEngine.prototype._handleResponse = function (message) {
-  var id = message.id
-  var cb = this._callbacks[id]
-  delete this._callbacks[id]
+RpcEngine.prototype._handleResponse = function (message) {
   var error = message.error
   var err = null
   if (error) {
@@ -153,84 +173,22 @@ RPCEngine.prototype._handleResponse = function (message) {
     err.code = error.code
     err.data = error.data
   }
+  var id = message.id
+  var cb = this._callbacks[id]
   if (cb) {
+    delete this._callbacks[id]
+    clearTimeout(cb.timeout)
     cb.apply(null, [err].concat(message.result))
   } else if (err && this.listenerCount('error') > 0) {
     this.emit('error', err)
   }
 }
 
-RPCEngine.prototype.subscribe = function (name, fn) {
-  if (!this._subscriptions.remote[name]) {
-    this._subscriptions.remote[name] = fn
-    var self = this
-    this.call('subscribe', name, function (err) {
-      if (!self._subscriptions.remote[name]) return
-      if (err) {
-        self.emit('error', err)
-      } else {
-        self.on(name, fn)
-      }
-    })
+RpcEngine.prototype.close = function () {
+  for (var id in this._callbacks) {
+    var cb = this._callbacks[id]
+    delete this._callbacks[id]
+    clearTimeout(cb.timeout)
+    cb(new Error('rpc closed'))
   }
-}
-
-RPCEngine.prototype._subscribe = function (name, cb) {
-  var path = name.split(this.pathDelimiter)
-  var feed = this._follow(path.slice(0, -1), this.feeds)
-  if (!feed) {
-    cb(new Error('Feed not found'))
-    return
-  }
-  if (!this._subscriptions.local[name]) {
-    var self = this
-    var event = path[path.length - 1]
-    var fn = function () {
-      var args = Array.prototype.slice.call(arguments)
-      args.unshift(name)
-      self.call.apply(self, args)
-    }
-    this._subscriptions.local[name] = [
-      feed,
-      event,
-      fn
-    ]
-    feed.on(event, fn)
-  }
-  cb()
-}
-
-RPCEngine.prototype.unsubscribe = function (name, fn) {
-  delete this._subscriptions.remote[name]
-  this.removeListener(name, fn)
-  if (this.listenerCount(name) === 0) {
-    this.call('unsubscribe', name)
-  }
-}
-
-RPCEngine.prototype._unsubscribe = function (name) {
-  var subscription = this._subscriptions.local[name]
-  if (subscription) {
-    subscription[0].removeListener(subscription[1], subscription[2])
-    delete this._subscriptions.local[name]
-  }
-}
-
-RPCEngine.prototype.close = function () {
-  for (var name in this._subscriptions.local) {
-    var subscription = this._subscriptions.local[name]
-    delete this._subscriptions.local[name]
-    subscription[0].removeListener(subscription[1], subscription[2])
-  }
-  for (var name in this._subscriptions.remote) {
-    var fn = this._subscriptions.remote[name]
-    delete this._subscriptions.remote[name]
-    this.removeListener(name, fn)
-  }
-}
-
-RPCEngine.prototype._follow = function (path, object) {
-  return path.reduce(function (object, property) {
-    return object && object[property]
-  }, object)
 }

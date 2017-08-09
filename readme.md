@@ -9,15 +9,18 @@ Other stuff seems really intent on making serialization or transport decisions f
 
 ## Example
 ``` javascript
-var RPC = require('rpc-engine')
+var Rpc = require('rpc-engine')
 
-var a = new RPC()
-a.methods.add = function (a, b, cb) {
-  cb(null, a + b)
-}
+var a = new Rpc({
+  interface: {
+    add: function (a, b, cb) {
+      cb(null, a + b)
+    }
+  }
+})
 
-var b = new RPC()
-b.methods.nested = {
+var b = new Rpc()
+b.interface.subinterface = {
   hello: function (cb) {
     cb(null, 'world')
   }
@@ -40,21 +43,16 @@ b.call('add', 1, 1336, function (err, result) {
   console.log(result) // => 1337
 })
 
-a.call('nested.hello', function (err, answer) {
+a.call('subinterface.hello', function (err, answer) {
   console.log(answer) // => world
 })
 
-// emit events from .feeds to expose them across the ether:
-b.subscribe('some-event', eventHandler)
-function eventHandler (evt) {
+// JSON-RPC defines a notification mechanism that can
+// be used directly for primitive pub-sub systems
+a.interface['some-event'] = function (evt) {
   console.log(evt) // => 42
-  b.unsubscribe('some-event', eventHandler)
 }
-a.feeds.emit('some-event', 42)
-
-// emitters can also be nested in .feeds:
-a.feeds.subfeed = new Emitter()
-b.subscribe('subfeed.some-event', eventHandler)
+b.call('some-event', 42)
 ```
 
 ## Test
@@ -62,7 +60,59 @@ b.subscribe('subfeed.some-event', eventHandler)
 $ npm run test
 ```
 
+## API
+
+### `var rpc = new RpcEngine(opts)`
+* `opts` An optional `Object`. All key-value pairs are copied to the instance.
+
+## Methods
+
+### `rpc.call(method[, param1][, param2][, ...][, cb])`
+Invokes a method on the remote side.
+* `method` A `String`.
+* `params` Anything the transport (or [`rpc.serialize()`](#rpcserialize-message)) can handle. Optional.
+* `cb` An optional callback `Function`.
+
+### `rpc.send(message)`
+Messages destined for the remote site are passed to this method after processing. Consumers of this module are responsible for providing an implementation.
+* `message` Whatever format the transport likes. See [`rpc.serialize()`](#rpcserialize-message) to control this.
+
+### `rpc.receive(message)`
+Messages originating from the remote side must be passed to this method for processing. Consumers of this module are responsible for invoking this method somehow.
+* `message` An `Object` or something [`rpc.deserialize()`](#rpcdeserialize-message) can handle.
+
+### `rpc.serialize(message)`
+This method is an optional hook consumers of this module may implement to convert outgoing messages into something compatible with the transport being used.
+* `message` An `Object`.
+
+### `rpc.deserialize(message)`
+This method is an optional hook consumers of this module may implement to convert raw a incoming message into an `Object`.
+* `message` Whatever format the transport uses.
+
+### `rpc.close()`
+This method can be invoked (for example, when the transport is closed) to immediately cancel any outstanding requests.
+
+## Properties
+
+### `rpc.interface`
+An `Object`. This property can be set during intialization via constructor `opts` but cannot be changed to point to a different object afterwards. Any property (or sub-property, see [`rpc.pathDelimiter`](#rpcpathdelimiter)) of this object that also happens to be a function can be executed by the remote side.
+
+### `rpc.defaultMethod`
+A `Function`. If implemented, this method will be invoked for any incoming message or notification that does not match an explicit handler in `rpc.interface`. Note that incoming notifications may be passed to `rpc.emit()` regardless of whether they match an explict handler or a default method has been implemented.
+
+### `rpc.objectMode`
+A `Boolean`. `RpcEngine` defaults to passing parameters as an `Array` of positional arguments. Setting this property to `true` will pass them as key-value pairs instead. This is frequently needed for interop with other JSON-RPC implementations.
+
+### `rpc.pathDelimiter`
+A `String`. Specifies the path delimiter remotes must use to access methods nested deeply within `rpc.interface`. Defaults to `'.'`.
+
 ## Releases
+* 5.0.0
+  * Move pub-sub code out to separate module [rpc-events](https://github.com/jessetane/rpc-events)
+  * Rename constructor to `RpcEngine`
+  * Rename `methods` property to `interface`
+  * `close()` method should cancel pending requests immediately
+  * Complete API documentation
 * 4.0.0
   * Allow path delimited method and event names
   * Add feeds property and implement `{un}subscribe()` on the receive side
