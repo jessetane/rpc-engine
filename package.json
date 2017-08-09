@@ -1,6 +1,6 @@
 {
   "name": "rpc-engine",
-  "version": "4.1.2",
+  "version": "5.0.0",
   "description": "Minimalist RPC library.",
   "scripts": {
     "test": "node test"
