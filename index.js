@@ -18,6 +18,7 @@ function RpcEngine (opts) {
     this._interface = {}
   }
   this._callbacks = {}
+  this._i = 0
   this.receive = this.receive.bind(this)
   this.close = this.close.bind(this)
 }
@@ -48,7 +49,7 @@ RpcEngine.prototype.call = function (name) {
   var cb = params.slice(-1)[0]
   var cbIsFunction = typeof cb === 'function'
   if (cbIsFunction) {
-    id = message.id = Math.random()
+    id = message.id = this._i++
     this._callbacks[id] = cb
     params.pop()
   }
