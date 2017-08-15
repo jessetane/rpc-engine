@@ -2,8 +2,11 @@ var tape = require('tape')
 var Rpc = require('./')
 
 var a = new Rpc()
-var b = new Rpc()
-
+a.setInterface({
+  add: function (x, y, cb) {
+    cb(null, x + y)
+  }
+})
 a.send = function (message) {
   // use setTimeout here to force async sending and
   // avoid nested try/catch which could never happen irl
@@ -11,18 +14,34 @@ a.send = function (message) {
     b.receive(message)
   })
 }
-a.interface.add = function (a, b, cb) {
-  cb(null, a + b)
-}
 
+var b = new Rpc()
+b.getInterface().hello = function (cb) {
+  cb(null, 'world')
+}
 b.send = function (message) {
   setTimeout(function () {
     a.receive(message)
   })
 }
-b.interface.hello = function (cb) {
-  cb(null, 'world')
-}
+
+tape('get and set interfaces by path', function (t) {
+  t.plan(5)
+  var defaultInterface = a.getInterface()
+  t.equal(a.getInterface(''), defaultInterface)
+  a.on('interface-remove', handler)
+  a.setInterface()
+  t.equal(a.getInterface(), defaultInterface)
+  a.setInterface('', defaultInterface)
+  a.setInterface('')
+  a.removeListener('interface-remove', handler)
+  function handler (iface, path) {
+    t.equal(iface, defaultInterface)
+  }
+  t.equal(a.getInterface(), undefined)
+  a.setInterface(defaultInterface)
+  t.equal(a.getInterface(), defaultInterface)
+})
 
 tape('call remote method on b without params', function (t) {
   t.plan(2)
@@ -37,6 +56,22 @@ tape('call remote method on a with params', function (t) {
   b.call('add', 1, 2, function (err, result) {
     t.error(err)
     t.equal(result, 3)
+  })
+})
+
+tape('call remote method on subinterface of b', function (t) {
+  t.plan(4)
+  b.setInterface('sub', {
+    test: function (param, cb) {
+      t.equal(param, 42)
+      cb()
+    }
+  })
+  a.call('sub.test', 42, function (err) {
+    t.error(err)
+    t.equal(typeof b.getInterface('sub').test, 'function')
+    b.setInterface('sub', null)
+    t.equal(b.getInterface('sub'), undefined)
   })
 })
 
@@ -56,12 +91,12 @@ tape('serialize and deserialize', function (t) {
 
 tape('send a notification to b', function (t) {
   t.plan(2)
-  b.interface.notify = function (notification) {
+  b.getInterface().notify = function (notification) {
     t.equal(notification, 'alert')
   }
   b.once('notify', function (evt) {
     t.equal(evt, 'alert')
-    delete b.interface.notify
+    delete b.getInterface().notify
   })
   a.call('notify', 'alert')
 })
@@ -76,19 +111,16 @@ tape('return not found error for missing method', function (t) {
 
 tape('invoke methods in the correct context', function (t) {
   t.plan(2)
-  a.interface.x = {
-    y: {
-      z: {
-        method: function (cb) {
-          t.equal(this, a.interface.x.y.z)
-          cb()
-        }
-      }
+  var iface = {
+    method: function (cb) {
+      t.equal(this, iface)
+      cb()
     }
   }
+  a.setInterface('x.y.z', iface)
   b.call('x.y.z.method', function (err) {
     t.error(err)
-    delete a.interface.x
+    a.setInterface('x.y.z', null)
   })
 })
 
@@ -119,7 +151,7 @@ tape('timeout calls if specified', function (t) {
   t.plan(2)
   var timeout = null
   a.timeout = 50
-  b.interface.slowMethod = function (cb) {
+  b.getInterface().slowMethod = function (cb) {
     timeout = setTimeout(cb, 100)
   }
   a.call('slowMethod', function (err) {
@@ -127,14 +159,14 @@ tape('timeout calls if specified', function (t) {
     t.equal(err.message, 'Call timed out')
     clearTimeout(timeout)
     delete a.timeout
-    delete b.interface.slowMethod
+    delete b.getInterface().slowMethod
   })
 })
 
 tape('use object-based params / result by setting objectMode', function (t) {
   t.plan(3)
   a.objectMode = b.objectMode = true
-  b.interface.question = function (params, cb) {
+  b.getInterface().question = function (params, cb) {
     t.equal(params.question, 'universe')
     cb(null, { answer: 42 })
   }
@@ -143,7 +175,7 @@ tape('use object-based params / result by setting objectMode', function (t) {
     t.equal(result.answer, 42)
     delete a.objectMode
     delete b.objectMode
-    delete b.interface.question
+    delete b.getInterface().question
   })
 })
 
@@ -201,19 +233,6 @@ tape('catch send errors for notifications when error handler is present', functi
     b.removeListener('error', onerror)
   }
   b.call('notify')
-})
-
-tape('discard send errors for notifications when error handler is not present', function (t) {
-  t.plan(1)
-  var oldSend = b.send
-  b.send = function () {
-    throw new Error('Send failed')
-  }
-  b.call('notify')
-  setTimeout(function () {
-    b.send = oldSend
-    t.pass()
-  }, 50)
 })
 
 tape('discard errors from remote for which we have no matching callback and error handler is not present', function (t) {

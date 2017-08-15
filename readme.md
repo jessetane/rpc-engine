@@ -11,20 +11,19 @@ Other stuff seems really intent on making serialization or transport decisions f
 ``` javascript
 var Rpc = require('rpc-engine')
 
-var a = new Rpc({
-  interface: {
-    add: function (a, b, cb) {
-      cb(null, a + b)
-    }
+var a = new Rpc()
+a.setInterface({
+  add: function (a, b, cb) {
+    cb(null, a + b)
   }
 })
 
 var b = new Rpc()
-b.interface.subinterface = {
+b.setInterface('subinterface', {
   hello: function (cb) {
     cb(null, 'world')
   }
-}
+})
 
 // in real life you'll have some transport in between
 // but that's outside the scope of this module
@@ -49,10 +48,10 @@ a.call('subinterface.hello', function (err, answer) {
 
 // JSON-RPC defines a notification mechanism that can
 // be used directly for primitive pub-sub systems
-a.interface['some-event'] = function (evt) {
+a.getInterface().event = function (evt) {
   console.log(evt) // => 42
 }
-b.call('some-event', 42)
+b.call('event', 42)
 ```
 
 ## Test
@@ -66,6 +65,16 @@ $ npm run test
 * `opts` An optional `Object`. All key-value pairs are copied to the instance.
 
 ## Methods
+
+### `rpc.getInterface([path])`
+Returns the interface at the specified path.
+* `path` An optional `String`. If omitted, returns the default interface (e.g. whatever is set at `''`).
+
+### `rpc.setInterface(path[, iface])`
+### `rpc.setInterface(iface)`
+Sets the interface at the specified path. Existing interfaces at the specified path are removed.
+* `path` A `String`. If the second form is used, the path is assumed to be `''`.
+* `iface` An `Object`. If omitted, the interface at the given path will be removed.
 
 ### `rpc.call(method[, param1][, param2][, ...][, cb])`
 Invokes a method on the remote side.
@@ -94,9 +103,6 @@ This method can be invoked (for example, when the transport is closed) to immedi
 
 ## Properties
 
-### `rpc.interface`
-An `Object`. This property can be set during intialization via constructor `opts` but cannot be changed to point to a different object afterwards. Any property (or sub-property, see [`rpc.pathDelimiter`](#rpcpathdelimiter)) of this object that also happens to be a function can be executed by the remote side.
-
 ### `rpc.defaultMethod`
 A `Function`. If implemented, this method will be invoked for any incoming message or notification that does not match an explicit handler in `rpc.interface`. Note that incoming notifications may be passed to `rpc.emit()` regardless of whether they match an explict handler or a default method has been implemented.
 
@@ -106,7 +112,23 @@ A `Boolean`. `RpcEngine` defaults to passing parameters as an `Array` of positio
 ### `rpc.pathDelimiter`
 A `String`. Specifies the path delimiter remotes must use to access methods nested deeply within `rpc.interface`. Defaults to `'.'`.
 
+## Events
+
+### `rpc.emit('interface-add', iface, path)`
+Emitted when an interface is added.
+
+### `rpc.emit('interface-remove', iface, path)`
+Emitted when an interface is removed.
+
+### `rpc.emit('error', err)`
+Emitted in either of two scenarios:
+* A send operation fails due to serialization or transport error and no callback was passed.
+* A response (any inbound message with an `id`) is received that doesn't match any local callback _AND_ at least one listener for the `'error'` event has been registered.
+
 ## Releases
+* 6.0.0
+  * Require manipulation of interfaces to be done via method calls so that `interface-{add,remove}` can be emitted reliably.
+  * Always emit `'error'` when send operations fail and no callback was passed.
 * 5.0.0
   * Move pub-sub code out to separate module [rpc-events](https://github.com/jessetane/rpc-events)
   * Rename constructor to `RpcEngine`

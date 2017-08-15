@@ -14,41 +14,55 @@ function RpcEngine (opts) {
   if (!this.pathDelimiter) {
     this.pathDelimiter = '.'
   }
-  if (!this._interface) {
-    this._interface = {}
-  }
+  this._interfaces = { '': {} }
   this._callbacks = {}
   this.receive = this.receive.bind(this)
   this.close = this.close.bind(this)
 }
 
-Object.defineProperty(RpcEngine.prototype, 'interface', {
-  get: function () {
-    return this._interface
-  },
-  set: function (interface) {
-    if (this._interface) {
-      throw new Error('Interface cannot be directly set')
-    } else {
-      this._interface = interface
-    }
-  }
-})
-
-RpcEngine.prototype.lookupInterface = function (path) {
-  return path.reduce(function (interface, pathComponent) {
-    return interface && interface[pathComponent]
-  }, this._interface)
+RpcEngine.prototype.getInterface = function (path) {
+  if (!path) path = ''
+  return this._interfaces[path]
 }
 
-RpcEngine.prototype.call = function (name) {
+RpcEngine.prototype.setInterface = function (path, iface) {
+  if (path && typeof path === 'object') {
+    iface = path
+    path = ''
+  }
+  var existing = this._interfaces[path]
+  if (iface === existing) return
+  if (existing) {
+    delete this._interfaces[path]
+    this.emit('interface-remove', existing, path)
+  }
+  if (iface) {
+    this._interfaces[path] = iface
+    this.emit('interface-add', iface, path)
+  }
+}
+
+RpcEngine.prototype.generateCallId = function () {
+  return Math.random()
+}
+
+RpcEngine.prototype.call = function (id, name) {
+  var params = null
+  if (typeof id === 'string') {
+    params = Array.prototype.slice.call(arguments, 1)
+    name = id
+    id = null
+  } else {
+    params = Array.prototype.slice.call(arguments, 2)
+  }
   var message = { method: name }
-  var params = Array.prototype.slice.call(arguments, 1)
-  var id = undefined
   var cb = params.slice(-1)[0]
   var cbIsFunction = typeof cb === 'function'
   if (cbIsFunction) {
-    id = message.id = Math.random()
+    if (id === null) {
+      id = this.generateCallId()
+    }
+    message.id = id
     this._callbacks[id] = cb
     params.pop()
   }
@@ -64,10 +78,10 @@ RpcEngine.prototype.call = function (name) {
       cb(err)
     }, this.timeout)
   }
-  this._dosend(message, id)
+  this._dosend(message, true)
 }
 
-RpcEngine.prototype._dosend = function (message, cbid) {
+RpcEngine.prototype._dosend = function (message, didOriginateLocally) {
   if (this.serialize) {
     message = this.serialize(message)
   }
@@ -75,11 +89,11 @@ RpcEngine.prototype._dosend = function (message, cbid) {
     this.send(message)
   } catch (err) {
     err.code = -32603
-    if (cbid !== undefined) {
-      var cb = this._callbacks[cbid]
-      delete this._callbacks[cbid]
+    var cb = this._callbacks[message.id]
+    if (cb && didOriginateLocally) {
+      delete this._callbacks[message.id]
       cb(err)
-    } else if (this.listenerCount('error') > 0) {
+    } else {
       this.emit('error', err)
     }
   }
@@ -108,7 +122,7 @@ RpcEngine.prototype.receive = function (message) {
   }
 }
 
-RpcEngine.prototype._handleRequest = function (name, message) {
+RpcEngine.prototype._handleRequest = function (path, message) {
   var id = message.id
   var params = message.params
   if (!Array.isArray(params)) {
@@ -118,26 +132,28 @@ RpcEngine.prototype._handleRequest = function (name, message) {
       params = []
     }
   }
-  var path = name.split(this.pathDelimiter)
-  var interface = this.lookupInterface(path.slice(0, -1))
-  method = interface && interface[path[path.length - 1]]
+  var sep = path.lastIndexOf(this.pathDelimiter)
+  var ifaceName = sep > 0 ? path.slice(0, sep) : ''
+  var methodName = sep > 0 ? path.slice(sep + 1) : path
+  var iface = this.getInterface(ifaceName)
+  var method = iface && iface[methodName]
   if (!method && this.defaultMethod) {
-    params.unshift(name)
+    params.unshift(path)
     method = this.defaultMethod
   }
   if (id === undefined) {
     if (method) {
-      method.apply(interface, params)
+      method.apply(iface, params)
     }
-    if (this.listenerCount(name) > 0) {
+    if (this.listenerCount(path) > 0) {
       if (!method || method !== this.defaultMethod) {
-        params.unshift(name)
+        params.unshift(path)
       }
       this.emit.apply(this, params)
     }
   } else if (method) {
     var self = this
-    method.apply(interface, params.concat(function (err) {
+    var cb = function (err) {
       if (err) {
         err = {
           message: err.message,
@@ -153,7 +169,9 @@ RpcEngine.prototype._handleRequest = function (name, message) {
         message.result = self.objectMode ? arguments[1] : Array.prototype.slice.call(arguments, 1)
       }
       self._dosend(message)
-    }))
+    }
+    cb.id = id
+    method.apply(iface, params.concat(cb))
   } else {
     this._dosend({
       id: id,
