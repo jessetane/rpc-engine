@@ -74,7 +74,9 @@ RpcEngine.prototype.call = function (id, name) {
   if (cbIsFunction && this.timeout) {
     var self = this
     cb.timeout = setTimeout(function () {
+      cb = self._callbacks[id]
       delete self._callbacks[id]
+      if (!cb) return
       var err = new Error('Call timed out')
       err.code = -32603
       cb(err)
