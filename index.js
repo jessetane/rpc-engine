@@ -209,6 +209,6 @@ RpcEngine.prototype.close = function () {
     var cb = this._callbacks[id]
     delete this._callbacks[id]
     clearTimeout(cb.timeout)
-    cb(new Error('rpc closed'))
+    cb(new Error('Connection closed'))
   }
 }
