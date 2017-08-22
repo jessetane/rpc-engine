@@ -1,5 +1,7 @@
 module.exports = RpcEngine
 
+var MAX_INT = Math.pow(2, 32)
+
 var Emitter = require('events')
 var inherits = require('inherits')
 
@@ -43,7 +45,7 @@ RpcEngine.prototype.setInterface = function (path, iface) {
 }
 
 RpcEngine.prototype.generateCallId = function () {
-  return Math.random()
+  return Math.floor(Math.random() * MAX_INT)
 }
 
 RpcEngine.prototype.call = function (id, name) {
