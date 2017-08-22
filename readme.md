@@ -110,7 +110,7 @@ A `Function`. If implemented, this method will be invoked for any incoming messa
 A `Boolean`. `RpcEngine` defaults to passing parameters as an `Array` of positional arguments. Setting this property to `true` will pass them as key-value pairs instead. This is frequently needed for interop with other JSON-RPC implementations.
 
 ### `rpc.pathDelimiter`
-A `String`. Specifies the path delimiter remotes must use to access methods nested deeply within `rpc.interface`. Defaults to `'.'`.
+A `String`. Specifies the path delimiter remotes must use to access methods on named interfaces. Defaults to `'.'`.
 
 ## Events
 
