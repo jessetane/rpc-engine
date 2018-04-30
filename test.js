@@ -110,17 +110,34 @@ tape('return not found error for missing method', function (t) {
 })
 
 tape('invoke methods in the correct context', function (t) {
-  t.plan(2)
+  t.plan(4)
   var iface = {
-    method: function (cb) {
+    unbound: function (cb) {
+      cb(null, this)
+    },
+    bound: function (cb) {
+      cb(null, this)
+    },
+    unboundNotification: function () {
+      t.equal(this, a)
+    },
+    boundNotification: function () {
       t.equal(this, iface)
-      cb()
     }
   }
+  iface.bound = iface.bound.bind(iface)
+  iface.boundNotification = iface.boundNotification.bind(iface)
   a.setInterface('x.y.z', iface)
-  b.call('x.y.z.method', function (err) {
-    t.error(err)
-    a.setInterface('x.y.z', null)
+  b.call('x.y.z.unbound', function (err, ctx) {
+    t.equal(ctx, a)
+    b.call('x.y.z.bound', function (err, ctx) {
+      t.equal(ctx, iface)
+      b.call('x.y.z.unboundNotification')
+      b.call('x.y.z.boundNotification')
+      setTimeout(() => {
+        a.setInterface('x.y.z', null)
+      })
+    })
   })
 })
 
