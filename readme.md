@@ -126,6 +126,8 @@ Emitted in either of two scenarios:
 * A response (any inbound message with an `id`) is received that doesn't match any local callback _AND_ at least one listener for the `'error'` event has been registered.
 
 ## Releases
+* 7.0.0
+  * Make default method invocation context the instance rather than the interface
 * 6.0.0
   * Require manipulation of interfaces to be done via method calls so that `interface-{add,remove}` can be emitted reliably.
   * Always emit `'error'` when send operations fail and no callback was passed.
