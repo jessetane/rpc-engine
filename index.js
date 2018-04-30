@@ -147,7 +147,7 @@ RpcEngine.prototype._handleRequest = function (path, message) {
   }
   if (id === undefined) {
     if (method) {
-      method.apply(iface, params)
+      method.apply(this, params)
     }
     if (this.listenerCount(path) > 0) {
       if (!method || method !== this.defaultMethod) {
@@ -175,7 +175,7 @@ RpcEngine.prototype._handleRequest = function (path, message) {
       self._dosend(message)
     }
     cb.id = id
-    method.apply(iface, params.concat(cb))
+    method.apply(this, params.concat(cb))
   } else {
     this._dosend({
       id: id,
