@@ -4,13 +4,15 @@
   "description": "Minimalist RPC library.",
   "type": "module",
   "scripts": {
-    "test": "node test"
+    "test": "node test",
+    "test-browser": "PORT=7357 ROOT=test app-server"
   },
   "dependencies": {
     "xevents": "^1.0.4"
   },
   "devDependencies": {
-    "tape": "^4.4.0"
+    "app-server": "github:jessetane/app-server#4.1.1",
+    "tap-esm": "^1.1.0"
   },
   "repository": "https://github.com/jessetane/rpc-engine",
   "author": "jesse.tane@gmail.com",
