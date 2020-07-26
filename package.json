@@ -3,6 +3,9 @@
   "version": "7.0.0",
   "description": "Minimalist RPC library.",
   "type": "module",
+  "exports": {
+    "./": "./"
+  },
   "scripts": {
     "test": "node test",
     "test-browser": "PORT=7357 ROOT=test app-server"
