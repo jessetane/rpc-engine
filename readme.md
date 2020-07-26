@@ -9,7 +9,7 @@ Other stuff seems really intent on making serialization or transport decisions f
 
 ## Example
 ``` javascript
-var Rpc = require('rpc-engine')
+import Rpc from 'rpc-engine/index.js'
 
 var a = new Rpc()
 a.setInterface({
@@ -32,7 +32,7 @@ a.send = b.receive
 
 // not all transports require manual serialization (e.g. we should have
 // structured clone in browserland), but if yours does, go nuts:
-var msgpack = require('msgpack-lite')
+import msgpack from 'msgpack-lite/index.js'
 a.serialize = JSON.stringify
 a.deserialize = msgpack.decode
 b.serialize = msgpack.encode
@@ -114,18 +114,21 @@ A `String`. Specifies the path delimiter remotes must use to access methods on n
 
 ## Events
 
-### `rpc.emit('interface-add', iface, path)`
-Emitted when an interface is added.
+### `CustomEvent('interface-add', { detail: { iface, path}})`
+Dispatched when an interface is added.
 
-### `rpc.emit('interface-remove', iface, path)`
-Emitted when an interface is removed.
+### `CustomEvent('interface-remove', { detail: { iface, path}})`
+Dispatched when an interface is removed.
 
-### `rpc.emit('error', err)`
-Emitted in either of two scenarios:
+### `CustomEvent('error', { detail: err })`
+Dispatched in either of two scenarios:
 * A send operation fails due to serialization or transport error and no callback was passed.
-* A response (any inbound message with an `id`) is received that doesn't match any local callback _AND_ at least one listener for the `'error'` event has been registered.
+* A response (any inbound message with an `id`) is received that doesn't match any local callback.
 
 ## Releases
+* 8.0.0
+  * Convert to ES module
+  * Switch from EventEmitter to EventTarget
 * 7.0.0
   * Make default method invocation context the instance rather than the interface
 * 6.0.0
