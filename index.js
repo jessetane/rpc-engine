@@ -1,8 +1,9 @@
-var Emitter = require('events')
+import EventTarget from 'xevents/event-target.js'
+import CustomEvent from 'xevents/custom-event.js'
 
 var MAX_INT = Math.pow(2, 32)
 
-class RpcEngine extends Emitter {
+class RpcEngine extends EventTarget {
   constructor (opts) {
     super()
     for (var key in opts) {
@@ -32,11 +33,13 @@ class RpcEngine extends Emitter {
     if (iface === existing) return
     if (existing) {
       delete this._interfaces[path]
-      this.emit('interface-remove', existing, path)
+      var evt = new CustomEvent('interface-remove', { detail: { iface: existing, path }})
+      this.dispatchEvent(evt)
     }
     if (iface) {
       this._interfaces[path] = iface
-      this.emit('interface-add', iface, path)
+      evt = new CustomEvent('interface-add', { detail: { iface, path }})
+      this.dispatchEvent(evt)
     }
   }
 
@@ -68,10 +71,9 @@ class RpcEngine extends Emitter {
       message.params = this.objectMode ? params[0] : params
     }
     if (cbIsFunction && this.timeout) {
-      var self = this
-      cb.timeout = setTimeout(function () {
-        cb = self._callbacks[id]
-        delete self._callbacks[id]
+      cb.timeout = setTimeout(() => {
+        cb = this._callbacks[id]
+        delete this._callbacks[id]
         if (!cb) return
         var err = new Error('Call timed out')
         err.code = -32603
@@ -94,7 +96,8 @@ class RpcEngine extends Emitter {
         delete this._callbacks[message.id]
         cb(err)
       } else {
-        this.emit('error', err)
+        var evt = new CustomEvent('error', { detail: err })
+        this.dispatchEvent(evt)
       }
     }
   }
@@ -144,13 +147,12 @@ class RpcEngine extends Emitter {
     if (id === undefined) {
       if (method) {
         method.apply(this, params)
-      }
-      if (this.listenerCount(path) > 0) {
-        if (!method || method !== this.defaultMethod) {
-          params.unshift(path)
+        if (method === this.defaultMethod) {
+          params = params.slice(1)
         }
-        this.emit.apply(this, params)
       }
+      var evt = new CustomEvent(path, { detail: this.objectMode ? params[0] : params })
+      this.dispatchEvent(evt)
     } else if (method) {
       var self = this
       var cb = function (err) {
@@ -197,8 +199,9 @@ class RpcEngine extends Emitter {
       delete this._callbacks[id]
       clearTimeout(cb.timeout)
       cb.apply(null, [err].concat(message.result))
-    } else if (err && this.listenerCount('error') > 0) {
-      this.emit('error', err)
+    } else if (err) {
+      var evt = new CustomEvent('error', { detail: err })
+      this.dispatchEvent(evt)
     }
   }
 
@@ -212,4 +215,4 @@ class RpcEngine extends Emitter {
   }
 }
 
-module.exports = RpcEngine
+export default RpcEngine

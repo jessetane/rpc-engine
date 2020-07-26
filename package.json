@@ -2,11 +2,12 @@
   "name": "rpc-engine",
   "version": "7.0.0",
   "description": "Minimalist RPC library.",
+  "type": "module",
   "scripts": {
     "test": "node test"
   },
   "dependencies": {
-    "inherits": "^2.0.3"
+    "xevents": "^1.0.4"
   },
   "devDependencies": {
     "tape": "^4.4.0"
