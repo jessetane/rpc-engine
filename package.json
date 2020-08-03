@@ -4,6 +4,7 @@
   "description": "Minimalist RPC library.",
   "type": "module",
   "exports": {
+    ".": "./index.js",
     "./": "./"
   },
   "scripts": {
