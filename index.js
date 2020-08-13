@@ -156,16 +156,11 @@ class RpcEngine extends EventTarget {
     } else if (method) {
       var self = this
       var cb = function (err) {
+        message = { id }
         if (err) {
-          err = {
-            message: err.message,
-            code: err.code,
-            data: err.data
-          }
-        }
-        message = {
-          id: id,
-          error: err
+          var e = message.error = { message: err.message }
+          if (err.code !== undefined) e.code = err.code
+          if (err.data !== undefined) e.data = err.data
         }
         if (arguments.length > 1) {
           message.result = self.objectMode ? arguments[1] : Array.prototype.slice.call(arguments, 1)
