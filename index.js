@@ -181,21 +181,21 @@ class RpcEngine extends EventTarget {
   }
 
   _handleResponse (message) {
-    var error = message.error
-    var err = null
-    if (error) {
-      err = new Error(error.message)
-      err.code = error.code
-      err.data = error.data
+    var err = message.error
+    var e = null
+    if (err) {
+      e = new Error(err.message)
+      if (err.code !== undefined) e.code = err.code
+      if (err.data !== undefined) e.data = err.data
     }
     var id = message.id
     var cb = this._callbacks[id]
     if (cb) {
       delete this._callbacks[id]
       clearTimeout(cb.timeout)
-      cb.apply(null, [err].concat(message.result))
-    } else if (err) {
-      var evt = new CustomEvent('error', { detail: err })
+      cb.apply(null, [e].concat(message.result))
+    } else if (e) {
+      var evt = new CustomEvent('error', { detail: e })
       this.dispatchEvent(evt)
     }
   }
