@@ -51,10 +51,24 @@ tap('call remote method on b without params', function (t) {
   })
 })
 
+tap('call remote method on b without params (promise)', function (t) {
+  t.plan(1)
+  a.call('hello').then(result => {
+    t.equal(result, 'world')
+  })
+})
+
 tap('call remote method on a with params', function (t) {
   t.plan(2)
   b.call('add', 1, 2, function (err, result) {
     t.notOk(err)
+    t.equal(result, 3)
+  })
+})
+
+tap('call remote method on a with params (promise)', function (t) {
+  t.plan(1)
+  b.call('add', 1, 2).then(result => {
     t.equal(result, 3)
   })
 })
@@ -98,7 +112,7 @@ tap('send a notification to b', function (t) {
     t.equal(evt.detail[0], 'alert')
     delete b.getInterface().notify
   }, { once: true })
-  a.call('notify', 'alert')
+  a.notify('notify', 'alert')
 })
 
 tap('return not found error for missing method', function (t) {
@@ -251,7 +265,7 @@ tap('catch send errors for notifications when error handler is present', functio
     b.send = oldSend
     b.removeEventListener('error', onerror)
   }
-  b.call('notify')
+  b.notify('notify')
 })
 
 tap('discard errors from remote for which we have no matching callback and error handler is not present', function (t) {

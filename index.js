@@ -1,6 +1,21 @@
 import EventTarget from 'xevents/event-target.js'
 import CustomEvent from 'xevents/custom-event.js'
 
+function P (cb) {
+  var res = null
+  var rej = null
+  var p = new Promise((a, b) => {
+    res = a
+    rej = b
+  })
+  if (typeof cb === 'function') {
+    p = p.then(function () { cb(null, ...arguments) }).catch(cb)
+  }
+  p.resolve = res
+  p.reject = rej
+  return p
+}
+
 var MAX_INT = Math.pow(2, 32)
 
 class RpcEngine extends EventTarget {
@@ -47,38 +62,40 @@ class RpcEngine extends EventTarget {
     return Math.floor(Math.random() * MAX_INT)
   }
 
-  call (id, name) {
-    var params = null
-    if (typeof id === 'string') {
-      params = Array.prototype.slice.call(arguments, 1)
-      name = id
-      id = null
-    } else {
-      params = Array.prototype.slice.call(arguments, 2)
-    }
-    var message = { method: name }
+  call (name) {
+    var id = this.generateCallId()
+    var message = { id, method: name }
+    var params = Array.prototype.slice.call(arguments, 1)
     var cb = params.slice(-1)[0]
     var cbIsFunction = typeof cb === 'function'
     if (cbIsFunction) {
-      if (id === null) {
-        id = this.generateCallId()
-      }
-      message.id = id
-      this._callbacks[id] = cb
       params.pop()
+    } else {
+      cb = null
+    }
+    var p = this._callbacks[id] = new P(cb)
+    if (this.timeout) {
+      p.timeout = setTimeout(() => {
+        var p = this._callbacks[id]
+        delete this._callbacks[id]
+        if (!p) return
+        var err = new Error('Call timed out')
+        err.code = -32603
+        p.reject(err)
+      }, this.timeout)
     }
     if (params.length) {
       message.params = this.objectMode ? params[0] : params
     }
-    if (cbIsFunction && this.timeout) {
-      cb.timeout = setTimeout(() => {
-        cb = this._callbacks[id]
-        delete this._callbacks[id]
-        if (!cb) return
-        var err = new Error('Call timed out')
-        err.code = -32603
-        cb(err)
-      }, this.timeout)
+    this._dosend(message, true)
+    return p
+  }
+
+  notify (name) {
+    var message = { method: name }
+    var params = Array.from(arguments).slice(1)
+    if (params.length) {
+      message.params = this.objectMode ? params[0] : params
     }
     this._dosend(message, true)
   }
@@ -91,10 +108,10 @@ class RpcEngine extends EventTarget {
       this.send(message)
     } catch (err) {
       err.code = -32603
-      var cb = this._callbacks[message.id]
-      if (cb && didOriginateLocally) {
+      var p = this._callbacks[message.id]
+      if (p && didOriginateLocally) {
         delete this._callbacks[message.id]
-        cb(err)
+        p.reject(err)
       } else {
         var evt = new CustomEvent('error', { detail: err })
         this.dispatchEvent(evt)
@@ -189,11 +206,17 @@ class RpcEngine extends EventTarget {
       if (err.data !== undefined) e.data = err.data
     }
     var id = message.id
-    var cb = this._callbacks[id]
-    if (cb) {
+    var p = this._callbacks[id]
+    if (p) {
       delete this._callbacks[id]
-      clearTimeout(cb.timeout)
-      cb.apply(null, [e].concat(message.result))
+      clearTimeout(p.timeout)
+      if (e) {
+        p.reject(e)
+      } else if (!this.objectMode && Array.isArray(message.result)) {
+        p.resolve(...message.result)
+      } else {
+        p.resolve(message.result)
+      }
     } else if (e) {
       var evt = new CustomEvent('error', { detail: e })
       this.dispatchEvent(evt)
@@ -205,7 +228,7 @@ class RpcEngine extends EventTarget {
       var cb = this._callbacks[id]
       delete this._callbacks[id]
       clearTimeout(cb.timeout)
-      cb(new Error('Connection closed'))
+      p.reject(new Error('Connection closed'))
     }
   }
 }

@@ -51,7 +51,7 @@ a.call('subinterface.hello', function (err, answer) {
 a.getInterface().event = function (evt) {
   console.log(evt) // => 42
 }
-b.call('event', 42)
+b.notify('event', 42)
 ```
 
 ## Test
@@ -81,6 +81,11 @@ Invokes a method on the remote side.
 * `method` A `String`.
 * `params` Anything the transport (or [`rpc.serialize()`](#rpcserialize-message)) can handle. Optional.
 * `cb` An optional callback `Function`.
+
+### `rpc.notify(method[, param1][, param2][, ...])`
+Invokes a method on the remote side without sending a message id.
+* `method` A `String`.
+* `params` Anything the transport (or [`rpc.serialize()`](#rpcserialize-message)) can handle. Optional.
 
 ### `rpc.send(message)`
 Messages destined for the remote site are passed to this method after processing. Consumers of this module are responsible for providing an implementation.
