@@ -131,6 +131,8 @@ Dispatched in either of two scenarios:
 * A response (any inbound message with an `id`) is received that doesn't match any local callback.
 
 ## Releases
+* 9.0.0
+  * Add promise support
 * 8.0.0
   * Convert to ES module
   * Switch from EventEmitter to EventTarget
