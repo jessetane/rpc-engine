@@ -5,18 +5,15 @@
   "type": "module",
   "exports": {
     ".": "./index.js",
-    "./": "./"
+    "./*": "./*"
   },
   "scripts": {
     "test": "node test",
-    "test-browser": "PORT=7357 ROOT=test app-server"
-  },
-  "dependencies": {
-    "xevents": "^1.0.4"
+    "test-browser": "ecstatic --cache no-cache --port 7357 test"
   },
   "devDependencies": {
-    "app-server": "github:jessetane/app-server#4.1.1",
-    "tap-esm": "^1.1.0"
+    "ecstatic": "^4.1.4",
+    "tap-esm": "^2.0.0"
   },
   "repository": "https://github.com/jessetane/rpc-engine",
   "author": "jesse.tane@gmail.com",

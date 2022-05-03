@@ -1,136 +1,147 @@
-import Rpc from 'rpc-engine/index.js'
-import tap from 'tap-esm/index.js'
+import Rpc from 'rpc-engine'
+import tap from 'tap-esm'
+
+if (typeof window !== 'undefined') {
+  tap.out = function () {
+    console.log.apply(console, arguments)
+    const line = document.createElement('div')
+    line.textContent = Array.from(arguments).join(' ')
+    document.body.appendChild(line)
+  }
+}
 
 var a = new Rpc()
-a.setInterface({
-  add: function (x, y, cb) {
-    cb(null, x + y)
-  }
+a.addEventListener('error', evt => {
+  console.warn(evt.message)
 })
+a.methods = {
+  add: function (x, y) {
+    return x + y
+  }
+}
 a.send = function (message) {
-  // use setTimeout here to force async sending and
-  // avoid nested try/catch which could never happen irl
-  setTimeout(function () {
+  // use setTimeout to mock async sending
+  setTimeout(() => {
     b.receive(message)
   })
 }
 
 var b = new Rpc()
-b.getInterface().hello = function (cb) {
-  cb(null, 'world')
+b.addEventListener('error', evt => {
+  console.warn(evt.message)
+})
+b.methods.hello = function () {
+  return 'world'
 }
 b.send = function (message) {
-  setTimeout(function () {
+  setTimeout(() => {
     a.receive(message)
   })
 }
 
-tap('get and set interfaces by path', function (t) {
-  t.plan(5)
-  var defaultInterface = a.getInterface()
-  t.equal(a.getInterface(''), defaultInterface)
-  a.addEventListener('interface-remove', handler)
-  a.setInterface()
-  t.equal(a.getInterface(), defaultInterface)
-  a.setInterface('', defaultInterface)
-  a.setInterface('')
-  a.removeEventListener('interface-remove', handler)
-  function handler (evt) {
-    t.equal(evt.detail.iface, defaultInterface)
-  }
-  t.equal(a.getInterface(), undefined)
-  a.setInterface(defaultInterface)
-  t.equal(a.getInterface(), defaultInterface)
-})
-
-tap('call remote method on b without params', function (t) {
-  t.plan(2)
-  a.call('hello', function (err, result) {
-    t.notOk(err)
-    t.equal(result, 'world')
-  })
-})
-
-tap('call remote method on b without params (promise)', function (t) {
+tap('call remote method on b without params', async t => {
   t.plan(1)
-  a.call('hello').then(result => {
-    t.equal(result, 'world')
-  })
+  const result = await a.call('hello')
+  t.equal(result, 'world')
 })
 
-tap('call remote method on a with params', function (t) {
-  t.plan(2)
-  b.call('add', 1, 2, function (err, result) {
-    t.notOk(err)
-    t.equal(result, 3)
-  })
-})
-
-tap('call remote method on a with params (promise)', function (t) {
+tap('call remote method on b without params (promise)', async t => {
   t.plan(1)
-  b.call('add', 1, 2).then(result => {
-    t.equal(result, 3)
-  })
+  const result = await a.call('hello')
+  t.equal(result, 'world')
 })
 
-tap('call remote method on subinterface of b', function (t) {
-  t.plan(4)
-  b.setInterface('sub', {
-    test: function (param, cb) {
-      t.equal(param, 42)
-      cb()
-    }
-  })
-  a.call('sub.test', 42, function (err) {
-    t.notOk(err)
-    t.equal(typeof b.getInterface('sub').test, 'function')
-    b.setInterface('sub', null)
-    t.equal(b.getInterface('sub'), undefined)
-  })
+tap('call remote method on a with params', async t => {
+  t.plan(1)
+  const result = await b.call('add', 1, 2)
+  t.equal(result, 3)
 })
 
-tap('serialize and deserialize', function (t) {
-  t.plan(2)
+tap('call remote method on a with params (promise)', async t => {
+  t.plan(1)
+  const result = await b.call('add', 1, 2)
+  t.equal(result, 3)
+})
+
+tap('serialize and deserialize', async t => {
+  t.plan(1)
   a.serialize = b.serialize = JSON.stringify
   a.deserialize = b.deserialize = JSON.parse
-  b.call('add', 41, 1, function (err, result) {
-    t.notOk(err)
-    t.equal(result, 42)
-    delete a.serialize
-    delete a.deserialize
+  const result = await b.call('add', 41, 1)
+  t.equal(result, 42)
+  delete a.serialize
+  delete a.deserialize
+  delete b.serialize
+  delete b.deserialize
+})
+
+tap('throw when serialize fails', async t => {
+  t.plan(1)
+  b.serialize = function () {
+    throw new Error('serialize failed')
+  }
+  try {
+    await b.call('add', 1, 2)
+    throw new Error('serialize did not fail')
+  } catch (err) {
+    t.equal(err.message, 'serialize failed')
     delete b.serialize
-    delete b.deserialize
-  })
+  }
+})
+
+tap('respond with parse error when deserialize fails', t => {
+  t.plan(5)
+  a.deserialize = function () {
+    throw new Error('deserialize failed')
+  }
+  a.addEventListener('error', err => {
+    t.equal(err.message, 'deserialize failed')
+  }, { once: true })
+  b.addEventListener('error', err => {
+    t.equal(err.message, 'invalid request')
+    t.equal(err.code, -32600)
+    // this is tricky but the only way to observe a remote parse error is via
+    // the "invalid request" error data field as no message id would be known
+    t.equal(err.data.error.message, 'parse error')
+    t.equal(err.data.error.code, -32700)
+    delete a.deserialize
+  }, { once: true })
+  b.call('add', 1, 2)
 })
 
 tap('send a notification to b', function (t) {
-  t.plan(2)
-  b.getInterface().notify = function (notification) {
-    t.equal(notification, 'alert')
+  t.plan(1)
+  b.methods.notify = function () {
+    const evt = new Event('notify')
+    evt.detail = Array.from(arguments)
+    b.dispatchEvent(evt)
   }
-  b.addEventListener('notify', function (evt) {
+  b.addEventListener('notify', evt => {
     t.equal(evt.detail[0], 'alert')
-    delete b.getInterface().notify
+    delete b.methods.notify
   }, { once: true })
   a.notify('notify', 'alert')
 })
 
-tap('return not found error for missing method', function (t) {
+tap('return not found error for missing method', async t => {
   t.plan(2)
-  a.call('bogus', function (err) {
+  try {
+    await a.call('bogus')
+  } catch (err) {
+    t.equal(err.message, 'method not found')
     t.equal(err.code, -32601)
-    t.equal(err.message, 'Method not found')
-  })
+  }
 })
 
-tap('invoke methods in the correct context', function (t) {
+tap('invoke methods in the correct context', async t => {
   t.plan(4)
-  var iface = {
-    unbound: function (cb) {
-      cb(null, this)
+  const oldMethods = a.methods
+  const iface = {
+    unbound: function () {
+      return this
     },
-    bound: function (cb) {
-      cb(null, this)
+    bound: function () {
+      return this
     },
     unboundNotification: function () {
       t.equal(this, a)
@@ -141,148 +152,115 @@ tap('invoke methods in the correct context', function (t) {
   }
   iface.bound = iface.bound.bind(iface)
   iface.boundNotification = iface.boundNotification.bind(iface)
-  a.setInterface('x.y.z', iface)
-  b.call('x.y.z.unbound', function (err, ctx) {
-    t.equal(ctx, a)
-    b.call('x.y.z.bound', function (err, ctx) {
-      t.equal(ctx, iface)
-      b.call('x.y.z.unboundNotification')
-      b.call('x.y.z.boundNotification')
-      setTimeout(() => {
-        a.setInterface('x.y.z', null)
-      })
-    })
-  })
+  a.methods = iface
+  let ctx = await b.call('unbound')
+  t.equal(ctx, a)
+  ctx = await b.call('bound')
+  t.equal(ctx, iface)
+  await b.call('unboundNotification')
+  await b.call('boundNotification')
+  a.methods = oldMethods
 })
 
-tap('invoke defaultMethod (if available) for unknown methods', function (t) {
-  t.plan(3)
-  b.defaultMethod = function (name, x, cb) {
-    t.equal(name, 'unknown')
-    t.equal(x, 42)
-    cb()
-  }
-  a.call('unknown', 42, function (err) {
-    t.notOk(err)
-    delete b.defaultMethod
-  })
-})
-
-tap('invoke defaultMethod (if available) for unknown notifications', function (t) {
+tap('invoke defaultMethod (if available) for unknown methods', t => {
   t.plan(2)
   b.defaultMethod = function (name, x) {
+    delete b.defaultMethod
     t.equal(name, 'unknown')
     t.equal(x, 42)
-    delete b.defaultMethod
   }
   a.call('unknown', 42)
 })
 
-tap('timeout calls if specified', function (t) {
+tap('invoke defaultMethod (if available) for unknown notifications', t => {
   t.plan(2)
-  var timeout = null
+  b.defaultMethod = (name, x) => {
+    delete b.defaultMethod
+    t.equal(name, 'unknown')
+    t.equal(x, 42)
+  }
+  a.notify('unknown', 42)
+})
+
+tap('timeout calls if specified', async t => {
+  t.plan(2)
+  let timeout = null
   a.timeout = 50
-  b.getInterface().slowMethod = function (cb) {
-    timeout = setTimeout(cb, 100)
-  }
-  a.call('slowMethod', function (err) {
-    t.equal(err.code, -32603)
-    t.equal(err.message, 'Call timed out')
-    clearTimeout(timeout)
-    delete a.timeout
-    delete b.getInterface().slowMethod
-  })
-})
-
-tap('use object-based params / result by setting objectMode', function (t) {
-  t.plan(3)
-  a.objectMode = b.objectMode = true
-  b.getInterface().question = function (params, cb) {
-    t.equal(params.question, 'universe')
-    cb(null, { answer: 42 })
-  }
-  a.call('question', { question: 'universe' }, function (err, result) {
-    t.notOk(err)
-    t.equal(result.answer, 42)
-    delete a.objectMode
-    delete b.objectMode
-    delete b.getInterface().question
-  })
-})
-
-tap('respond to parse errors', function (t) {
-  t.plan(2)
-  a.deserialize = JSON.parse
-  b.serialize = function () {
-    return undefined
-  }
-  b.addEventListener('error', onerror)
-  function onerror (evt) {
-    var err = evt.detail
-    t.equal(err.code, -32700)
-    t.equal(err.message, 'Parse error')
-    delete a.deserialize
-    delete b.serialize
-    b.removeEventListener('error', onerror)
-  }
-  b.call('add', 1, 2, t.fail)
-})
-
-tap('respond to parse errors via callback if possible', function (t) {
-  t.plan(2)
-  a.deserialize = JSON.parse
-  b.call('add', 1, 2, function (err) {
-    t.equal(err.code, -32700)
-    t.equal(err.message, 'Parse error')
-    delete a.deserialize
-  })
-})
-
-tap('catch send errors for method calls', function (t) {
-  t.plan(2)
-  var oldSend = b.send
-  b.send = function () {
-    throw new Error('Send failed')
-  }
-  b.call('add', 1, 2, function (err) {
-    t.equal(err.code, -32603)
-    t.equal(err.message, 'Send failed')
-    b.send = oldSend
-  })
-})
-
-tap('catch send errors for notifications when error handler is present', function (t) {
-  t.plan(2)
-  var oldSend = b.send
-  b.send = function () {
-    throw new Error('Send failed')
-  }
-  b.addEventListener('error', onerror)
-  function onerror (evt) {
-    var err = evt.detail
-    t.equal(err.code, -32603)
-    t.equal(err.message, 'Send failed')
-    b.send = oldSend
-    b.removeEventListener('error', onerror)
-  }
-  b.notify('notify')
-})
-
-tap('discard errors from remote for which we have no matching callback and error handler is not present', function (t) {
-  t.plan(1)
-  a.addEventListener('error', onerror)
-  function onerror (evt) {
-    var err = evt.detail
-    t.equal(err.message, 'bogus error')
-    a.removeEventListener('error', onerror)
-    b.send({
-      id: 999,
-      error: {
-        code: -2,
-        message: 'another bogus error'
-      }
+  b.methods.slowMethod = async () => {
+    return new Promise(res => {
+      timeout = setTimeout(() => {
+        res(42)
+      }, 100)
     })
   }
+  try {
+    const result = await a.call('slowMethod')
+    if (result === 42) {
+      throw new Error('call did not time out')
+    }
+  } catch (err) {
+    clearTimeout(timeout)
+    delete a.timeout
+    delete b.methods.slowMethod
+    t.equal(err.code, -32603)
+    t.equal(err.message, 'call timed out')
+  }
+})
+
+tap('use object-based params when objectMode is set', async t => {
+  t.plan(2)
+  a.objectMode = true
+  b.methods.question = params => {
+    t.equal(params.question, 'universe')
+    return { answer: 42 }
+  }
+  const result = await a.call('question', { question: 'universe' })
+  delete a.objectMode
+  delete b.methods.question
+  t.equal(result.answer, 42)
+})
+
+tap('catch send errors for method calls', async t => {
+  t.plan(1)
+  var oldSend = b.send
+  b.send = function () {
+    throw new Error('send failed')
+  }
+  try {
+    await b.call('add', 1, 2)
+    throw new Error('send did not fail')
+  } catch (err) {
+    b.send = oldSend
+    t.equal(err.message, 'send failed')
+  }
+})
+
+tap('catch send errors for notifications', async t => {
+  t.plan(1)
+  const oldSend = b.send
+  b.send = function () {
+    throw new Error('send failed')
+  }
+  try {
+    await b.notify('notify')
+  } catch (err) {
+    b.send = oldSend
+    t.equal(err.message, 'send failed')
+  }
+})
+
+tap('not respond to invalid requests', t => {
+  t.plan(3)
+  const oldReceive = b.receive
+  b.receive = t.fail
+  a.addEventListener('error', err => {
+    t.equal(err.message, 'invalid request')
+    t.equal(err.code, -32600)
+    setTimeout(() => {
+      b.receive = oldReceive
+      t.pass()
+    }, 100)
+  }, { once: true })
   b.send({
     id: 998,
     error: {
@@ -290,4 +268,20 @@ tap('discard errors from remote for which we have no matching callback and error
       message: 'bogus error'
     }
   })
+})
+
+tap('not expose potentially sensitive error data to peer', async t => {
+  t.plan(3)
+  b.methods.leaky = () => {
+    throw new Error('secret stuff')
+  }
+  b.addEventListener('error', err => {
+    t.equal(err.message, 'secret stuff')
+  }, { once: true })
+  try {
+    await a.call('leaky')
+  } catch (err) {
+    t.equal(err.message, 'internal error')
+    t.equal(err.code, -32603)
+  }
 })

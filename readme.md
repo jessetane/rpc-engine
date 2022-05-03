@@ -9,21 +9,17 @@ Other stuff seems really intent on making serialization or transport decisions f
 
 ## Example
 ``` javascript
-import Rpc from 'rpc-engine/index.js'
+import Rpc from 'rpc-engine'
 
-var a = new Rpc()
-a.setInterface({
-  add: function (a, b, cb) {
-    cb(null, a + b)
-  }
-})
+const a = new Rpc()
+a.methods.add = (a, b) => {
+  return a + b
+}
 
-var b = new Rpc()
-b.setInterface('subinterface', {
-  hello: function (cb) {
-    cb(null, 'world')
-  }
-})
+const b = new Rpc()
+b.methods.hello = () => {
+  return 'world'
+}
 
 // in real life you'll have some transport in between
 // but that's outside the scope of this module
@@ -38,68 +34,53 @@ a.deserialize = msgpack.decode
 b.serialize = msgpack.encode
 b.deserialize = JSON.parse
 
-b.call('add', 1, 1336, function (err, result) {
-  console.log(result) // => 1337
-})
-
-a.call('subinterface.hello', function (err, answer) {
-  console.log(answer) // => world
-})
+console.log(await b.call('add', 1, 1336)) // => 1337
+console.log(await a.call('hello')) // => world
 
 // JSON-RPC defines a notification mechanism that can
 // be used directly for primitive pub-sub systems
-a.getInterface().event = function (evt) {
+a.methods.event = evt => {
   console.log(evt) // => 42
 }
 b.notify('event', 42)
 ```
 
 ## Test
-``` bash
+``` sh
 $ npm run test
+$ npm run test-browser
 ```
 
 ## API
 
-### `var rpc = new RpcEngine(opts)`
+### `const rpc = new RpcEngine(opts)`
 * `opts` An optional `Object`. All key-value pairs are copied to the instance.
 
 ## Methods
 
-### `rpc.getInterface([path])`
-Returns the interface at the specified path.
-* `path` An optional `String`. If omitted, returns the default interface (e.g. whatever is set at `''`).
-
-### `rpc.setInterface(path[, iface])`
-### `rpc.setInterface(iface)`
-Sets the interface at the specified path. Existing interfaces at the specified path are removed.
-* `path` A `String`. If the second form is used, the path is assumed to be `''`.
-* `iface` An `Object`. If omitted, the interface at the given path will be removed.
-
-### `rpc.call(method[, param1][, param2][, ...][, cb])`
+### `await rpc.call(method[, param1][, param2][, ...])`
 Invokes a method on the remote side.
 * `method` A `String`.
 * `params` Anything the transport (or [`rpc.serialize()`](#rpcserialize-message)) can handle. Optional.
-* `cb` An optional callback `Function`.
 
-### `rpc.notify(method[, param1][, param2][, ...])`
+### `await rpc.notify(method[, param1][, param2][, ...])`
 Invokes a method on the remote side without sending a message id.
 * `method` A `String`.
 * `params` Anything the transport (or [`rpc.serialize()`](#rpcserialize-message)) can handle. Optional.
 
-### `rpc.send(message)`
+### `await rpc.send(message)`
 Messages destined for the remote site are passed to this method after processing. Consumers of this module are responsible for providing an implementation.
 * `message` Whatever format the transport likes. See [`rpc.serialize()`](#rpcserialize-message) to control this.
 
-### `rpc.receive(message)`
+### `await rpc.receive(message)`
 Messages originating from the remote side must be passed to this method for processing. Consumers of this module are responsible for invoking this method somehow.
 * `message` An `Object` or something [`rpc.deserialize()`](#rpcdeserialize-message) can handle.
 
-### `rpc.serialize(message)`
+### `await rpc.serialize(message)`
 This method is an optional hook consumers of this module may implement to convert outgoing messages into something compatible with the transport being used.
 * `message` An `Object`.
 
-### `rpc.deserialize(message)`
+### `await rpc.deserialize(message)`
 This method is an optional hook consumers of this module may implement to convert raw a incoming message into an `Object`.
 * `message` Whatever format the transport uses.
 
@@ -109,28 +90,19 @@ This method can be invoked (for example, when the transport is closed) to immedi
 ## Properties
 
 ### `rpc.defaultMethod`
-A `Function`. If implemented, this method will be invoked for any incoming message or notification that does not match an explicit handler in `rpc.interface`. Note that incoming notifications may be passed to `rpc.emit()` regardless of whether they match an explict handler or a default method has been implemented.
+A `Function`. If implemented, this method will be invoked for any incoming message or notification that does not match an explicit handler in `rpc.methods`.
 
 ### `rpc.objectMode`
 A `Boolean`. `RpcEngine` defaults to passing parameters as an `Array` of positional arguments. Setting this property to `true` will pass them as key-value pairs instead. This is frequently needed for interop with other JSON-RPC implementations.
 
-### `rpc.pathDelimiter`
-A `String`. Specifies the path delimiter remotes must use to access methods on named interfaces. Defaults to `'.'`.
-
 ## Events
 
-### `CustomEvent('interface-add', { detail: { iface, path}})`
-Dispatched when an interface is added.
-
-### `CustomEvent('interface-remove', { detail: { iface, path}})`
-Dispatched when an interface is removed.
-
-### `CustomEvent('error', { detail: err })`
-Dispatched in either of two scenarios:
-* A send operation fails due to serialization or transport error and no callback was passed.
-* A response (any inbound message with an `id`) is received that doesn't match any local callback.
+### `Event('error')`
+Dispatched when something goes wrong while processing an incoming message.
 
 ## Releases
+* 10.0.0
+  * Simplify, modernize
 * 9.0.0
   * Add promise support
 * 8.0.0
