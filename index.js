@@ -128,7 +128,7 @@ class RpcEngine extends EventTarget {
         message.result = await method.apply(this, params)
         await this._send(message)
       } catch (err) {
-        this._sendError({
+        await this._sendError({
           message: 'internal error',
           code: -32603
         }, id)
@@ -138,7 +138,7 @@ class RpcEngine extends EventTarget {
       const err = new Error('method not found')
       err.code = -32601
       err.data = name
-      this._sendError(err, id)
+      await this._sendError(err, id)
       throw err
     }
   }
