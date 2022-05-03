@@ -89,6 +89,9 @@ This method can be invoked (for example, when the transport is closed) to immedi
 
 ## Properties
 
+### `rpc.methods`
+An `Object` representing the interface available to the remote peer. Keys are method names, values are functions.
+
 ### `rpc.defaultMethod`
 A `Function`. If implemented, this method will be invoked for any incoming message or notification that does not match an explicit handler in `rpc.methods`.
 
