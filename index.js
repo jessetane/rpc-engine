@@ -128,10 +128,7 @@ class RpcEngine extends EventTarget {
         message.result = await method.apply(this, params)
         await this._send(message)
       } catch (err) {
-        await this._sendError({
-          message: 'internal error',
-          code: -32603
-        }, id)
+        await this._sendError(err, id)
         throw err
       }
     } else {
