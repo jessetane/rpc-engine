@@ -104,6 +104,8 @@ A `Boolean`. `RpcEngine` defaults to passing parameters as an `Array` of positio
 Dispatched when something goes wrong while processing an incoming message.
 
 ## Releases
+* 11.0.0
+  * Allow errors generated during method handler execution to be sent to peers. This is risky in a promise environment because the programmer must opt-out of sending potentially sensitive error data to peers, but the benefits probably outweigh the risks
 * 10.0.0
   * Simplify, modernize
 * 9.0.0
