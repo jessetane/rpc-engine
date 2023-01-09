@@ -48,7 +48,7 @@ b.notify('event', 42)
 ## Test
 ``` sh
 $ npm run test
-$ npm run test-browser
+$ npm run test-browser # visit http://localhost:7357/test
 ```
 
 ## API
