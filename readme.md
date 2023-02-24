@@ -56,6 +56,9 @@ $ npm run test-browser # visit http://localhost:7357/test
 ### `const rpc = new RpcEngine(opts)`
 * `opts` An optional `Object`. All key-value pairs are copied to the instance.
 
+### `throw new RpcEngine.Error('error message')`
+Throw an instance of this error during method handler execution when the intended audience is the remote caller. Alternatively `myExistingError.insecureRpc = true` can be set before rethrowing an existing error. Note that only `{ message, code, data }` properties of errors are actually passed to the transport.
+
 ## Methods
 
 ### `await rpc.call(method[, param1][, param2][, ...])`
@@ -97,6 +100,9 @@ A `Function`. If implemented, this method will be invoked for any incoming messa
 
 ### `rpc.objectMode`
 A `Boolean`. `RpcEngine` defaults to passing parameters as an `Array` of positional arguments. Setting this property to `true` will pass them as key-value pairs instead. This is frequently needed for interop with other JSON-RPC implementations.
+
+### `rpc.insecureErrors`
+A `Boolean`. When true, all errors thrown during method handler execution are returned to remote callers. To opt-in to sending a specific error to remote callers, set `err.insecureRpc = true` before throwing or throw an instance of `Rpc.Error`.
 
 ## Events
 
