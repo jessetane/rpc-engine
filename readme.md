@@ -103,7 +103,7 @@ A `Function`. If implemented, this method will be invoked for any incoming messa
 A `Boolean`. `RpcEngine` defaults to passing parameters as an `Array` of positional arguments. Setting this property to `true` will pass them as key-value pairs instead. This is frequently needed for interop with other JSON-RPC implementations.
 
 ### `rpc.insecureErrors`
-A `Boolean`. When true, all errors thrown during method handler execution are returned to remote callers. To opt-in to sending a specific error to remote callers, set `err.insecureRpc = true` before throwing or throw an instance of `Rpc.Error`.
+A `Boolean`. When true, all errors thrown during method handler execution are returned to remote callers. To opt-in to sending a specific error to remote callers, set `err.insecureRpc = true` before throwing or throw an instance of `RpcEngine.Error`.
 
 ## Events
 
@@ -111,6 +111,8 @@ A `Boolean`. When true, all errors thrown during method handler execution are re
 Dispatched when something goes wrong while processing an incoming message.
 
 ## Releases
+* 12.0.0
+  * Change default back to not sending handler errors and add `rpc.insecureErrors` and `RpcEngine.Error` as opt-in mechanisms.
 * 11.0.0
   * Allow errors generated during method handler execution to be sent to peers. This is risky in a promise environment because the programmer must opt-out of sending potentially sensitive error data to peers, but the benefits probably outweigh the risks
 * 10.0.0
