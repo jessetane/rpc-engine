@@ -17,7 +17,8 @@ a.methods.add = (a, b) => {
 }
 
 const b = new Rpc()
-b.methods.hello = () => {
+b.methods.hello = async () => {
+  await new Promise(s => setTimeout(s, 100))
   return 'world'
 }
 

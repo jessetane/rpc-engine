@@ -9,7 +9,8 @@
   },
   "scripts": {
     "test": "node test",
-    "test-browser": "ecstatic --cache no-cache --host ::1 --port 7357"
+    "test-browser": "ecstatic --cache no-cache --host ::1 --port 7357",
+    "example": "node example"
   },
   "devDependencies": {
     "ecstatic": "^4.1.4",
