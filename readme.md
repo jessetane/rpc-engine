@@ -112,7 +112,7 @@ Dispatched when something goes wrong while processing an incoming message.
 
 ## Releases
 * 12.0.0
-  * Change default back to not sending handler errors and add `rpc.insecureErrors` and `RpcEngine.Error` as opt-in mechanisms.
+  * Change default back to not sending method handler errors and add `rpc.insecureErrors` and `RpcEngine.Error` as opt-in mechanisms
 * 11.0.0
   * Allow errors generated during method handler execution to be sent to peers. This is risky in a promise environment because the programmer must opt-out of sending potentially sensitive error data to peers, but the benefits probably outweigh the risks
 * 10.0.0
