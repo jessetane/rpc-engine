@@ -12,7 +12,7 @@ if (typeof window !== 'undefined') {
 
 var a = new Rpc()
 a.addEventListener('error', evt => {
-  console.warn(evt.message)
+  console.warn('a saw error:', evt.message)
 })
 a.methods = {
   add: function (x, y) {
@@ -28,7 +28,7 @@ a.send = function (message) {
 
 var b = new Rpc()
 b.addEventListener('error', evt => {
-  console.warn(evt.message)
+  console.warn('b saw error:', evt.message)
 })
 b.methods.hello = function () {
   return 'world'
