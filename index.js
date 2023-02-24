@@ -128,7 +128,14 @@ class RpcEngine extends EventTarget {
         message.result = await method.apply(this, params)
         await this._send(message)
       } catch (err) {
-        await this._sendError(err, id)
+        if (this.insecureErrors || err.insecureRpc) {
+          await this._sendError(err, id)
+        } else {
+          await this._sendError({
+            message: 'internal error',
+            code: -32603
+          }, id)
+        }
         throw err
       }
     } else {
@@ -176,5 +183,14 @@ class RpcEngine extends EventTarget {
     }
   }
 }
+
+class RpcError extends Error {
+  constructor () {
+    super(...arguments)
+    this.insecureRpc = true
+  }
+}
+
+RpcEngine.Error = RpcError
 
 export default RpcEngine

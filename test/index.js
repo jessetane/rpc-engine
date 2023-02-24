@@ -270,10 +270,44 @@ tap('not respond to invalid requests', t => {
   })
 })
 
-tap('expose potentially sensitive error data to peer', async t => {
+tap('do not expose method handler errors to peers by default', async t => {
   t.plan(3)
   b.methods.leaky = () => {
     throw new Error('secret stuff')
+  }
+  b.addEventListener('error', err => {
+    t.equal(err.message, 'secret stuff')
+  }, { once: true })
+  try {
+    await a.call('leaky')
+  } catch (err) {
+    t.equal(err.message, 'internal error')
+    t.equal(err.code, -32603)
+  }
+})
+
+tap('expose all errors to peer', async t => {
+  t.plan(3)
+  b.insecureErrors = true
+  b.methods.leaky = () => {
+    throw new Error('secret stuff')
+  }
+  b.addEventListener('error', err => {
+    t.equal(err.message, 'secret stuff')
+  }, { once: true })
+  try {
+    await a.call('leaky')
+  } catch (err) {
+    t.equal(err.message, 'secret stuff')
+    t.equal(err.code, undefined)
+  }
+})
+
+tap('expose selected errors to peer', async t => {
+  t.plan(3)
+  b.insecureErrors = false
+  b.methods.leaky = () => {
+    throw new Rpc.Error('secret stuff')
   }
   b.addEventListener('error', err => {
     t.equal(err.message, 'secret stuff')
