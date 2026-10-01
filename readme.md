@@ -40,6 +40,9 @@ console.log(await a.call('hello')) // => world
 
 // JSON-RPC defines a notification mechanism that can
 // be used directly for primitive pub-sub systems
+a.addEventListener('event', evt => {
+  console.log(evt.data[0]) // => 42
+})
 a.methods.event = evt => {
   console.log(evt) // => 42
 }
@@ -109,6 +112,9 @@ A `Boolean`. When true, all errors thrown during method handler execution are re
 
 ### `Event('error')`
 Dispatched when something goes wrong while processing an incoming message.
+
+### `Event(<arbitrary>)`
+Dispatched when a notification is received, after any matching methods have been called.
 
 ## Releases
 * 12.0.0
