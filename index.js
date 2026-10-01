@@ -118,6 +118,11 @@ class RpcEngine extends EventTarget {
     }
     message = {}
     if (id === undefined) {
+      setTimeout(() => {
+        const evt = new Event(name)
+        evt.data = this.objectMode ? params[0] : params
+        this.dispatchEvent(evt)
+      })
       if (method) {
         return method.apply(this, params)
       }

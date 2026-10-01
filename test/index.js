@@ -123,6 +123,14 @@ tap('send a notification to b', function (t) {
   a.notify('notify', 'alert')
 })
 
+tap('send a notification to a, use built-in event dispatching', function (t) {
+  t.plan(1)
+  a.addEventListener('notify', evt => {
+    t.equal(evt.data[0], 'alert')
+  }, { once: true })
+  b.notify('notify', 'alert')
+})
+
 tap('return not found error for missing method', async t => {
   t.plan(2)
   try {
