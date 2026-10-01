@@ -126,9 +126,9 @@ class RpcEngine extends EventTarget {
       if (method) {
         return method.apply(this, params)
       }
-    } else {
-      message.id = id
+      return
     }
+    message.id = id
     if (method) {
       try {
         message.result = await method.apply(this, params)

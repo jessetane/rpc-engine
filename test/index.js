@@ -131,6 +131,19 @@ tap('send a notification to a, use built-in event dispatching', function (t) {
   b.notify('notify', 'alert')
 })
 
+tap('do not respond to unhandled notifications', function (t) {
+  t.plan(1)
+  const oldSend = a.send
+  a.send = function () {
+    t.fail('should not send response for notification')
+  }
+  b.notify('unhandledNotification', 'data')
+  setTimeout(() => {
+    a.send = oldSend
+    t.pass()
+  }, 50)
+})
+
 tap('return not found error for missing method', async t => {
   t.plan(2)
   try {
