@@ -6,6 +6,7 @@ class RpcEngine extends EventTarget {
     }
     this.objectMode = !!this.objectMode
     this.methods = {}
+    this._id = 0
     this.callbacks = {}
     this.receive = this.receive.bind(this)
     this.close = this.close.bind(this)
@@ -29,7 +30,7 @@ class RpcEngine extends EventTarget {
   }
 
   async call (name) {
-    const id = Math.random().toString().slice(2)
+    const id = ++this._id
     const params = Array.from(arguments).slice(1)
     let message = { id, method: name }
     if (params.length) {

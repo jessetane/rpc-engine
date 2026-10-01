@@ -319,3 +319,13 @@ tap('expose selected errors to peer', async t => {
     t.equal(err.code, undefined)
   }
 })
+
+tap('use sequential integer ids for calls', async t => {
+  t.plan(2)
+  const client = new Rpc()
+  client.send = function (message) {
+    t.equal(typeof message.id, 'number')
+    t.equal(message.id, client._id)
+  }
+  client.call('testMethod')
+})
