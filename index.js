@@ -5,8 +5,8 @@ class RpcEngine extends EventTarget {
       this[key] = opts[key]
     }
     this.objectMode = !!this.objectMode
-    this.methods = {}
     this._id = 0
+    this.methods = this.methods || {}
     this.callbacks = {}
     this.receive = this.receive.bind(this)
     this.close = this.close.bind(this)
