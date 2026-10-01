@@ -53,7 +53,7 @@ class RpcEngine extends EventTarget {
       }, this.timeout)
     }
     try {
-      await this._send(message)
+      await this._send(message, params)
     } catch (err) {
       delete this.callbacks[id]
       clearTimeout(p.timeout)
