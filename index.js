@@ -68,7 +68,7 @@ class RpcEngine extends EventTarget {
     if (params.length) {
       message.params = this.objectMode ? params[0] : params
     }
-    return this._send(message)
+    return this._send(message, params)
   }
 
   async receive (rawMessage) {

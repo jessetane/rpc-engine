@@ -350,3 +350,16 @@ tap('use sequential integer ids for calls', async t => {
   }
   client.call('testMethod')
 })
+
+tap('forward params to _send in notify and call', async t => {
+  t.plan(2)
+  const client = new Rpc()
+  const seen = []
+  client._send = function (message, params) {
+    seen.push(params?.[0])
+  }
+  client.call('testCall', 'param1')
+  await client.notify('testNotify', 'param2')
+  t.equal(seen[0], 'param1')
+  t.equal(seen[1], 'param2')
+})
