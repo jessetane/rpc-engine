@@ -117,6 +117,11 @@ Dispatched when something goes wrong while processing an incoming message.
 Dispatched when a notification is received, after any matching methods have been called.
 
 ## Releases
+* 12.1.0
+  * Change to autoincrementing integers for message IDs
+  * Allow passing methods to constructor
+  * Provide a mechanism for subclasses overriding \_send to access caller params
+  * Dispatch native events for notifications
 * 12.0.0
   * Change default back to not sending method handler errors and add `rpc.insecureErrors` and `RpcEngine.Error` as opt-in mechanisms
 * 11.0.0
