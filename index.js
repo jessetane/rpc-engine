@@ -51,6 +51,7 @@ class RpcEngine extends EventTarget {
         err.code = -32603
         p.reject(err)
       }, this.timeout)
+      p.timeout?.unref?.()
     }
     try {
       await this._send(message, params)
