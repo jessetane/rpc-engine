@@ -110,16 +110,12 @@ tap('respond with parse error when deserialize fails', t => {
 })
 
 tap('send a notification to b', function (t) {
-  t.plan(1)
-  b.methods.notify = function () {
-    const evt = new Event('notify')
-    evt.detail = Array.from(arguments)
-    b.dispatchEvent(evt)
-  }
+  t.plan(2)
   b.addEventListener('notify', evt => {
-    t.equal(evt.detail[0], 'alert')
+    t.equal(evt.data[0], 'alert')
     delete b.methods.notify
   }, { once: true })
+  b.methods.notify = () => t.pass()
   a.notify('notify', 'alert')
 })
 
